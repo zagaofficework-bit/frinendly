@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../models/booking.dart';
 import '../models/chat_message.dart';
 import '../models/companion.dart';
@@ -147,7 +148,8 @@ class SupabaseCompanionRepository implements CompanionRepository {
       final list = (response as List).map((row) => Companion.fromMap(row as Map<String, dynamic>)).toList();
       if (list.isEmpty) return _fallback.fetchCompanions();
       return list;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase fetchCompanions error: $e\n$st');
       return _fallback.fetchCompanions();
     }
   }
@@ -158,7 +160,8 @@ class SupabaseCompanionRepository implements CompanionRepository {
       final response = await client.from('companions').select().eq('id', id).maybeSingle();
       if (response == null) return _fallback.byId(id);
       return Companion.fromMap(response as Map<String, dynamic>);
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase byId error: $e\n$st');
       return _fallback.byId(id);
     }
   }
@@ -168,9 +171,9 @@ class SupabaseCompanionRepository implements CompanionRepository {
     try {
       final response = await client.from('reviews').select().eq('companion_id', companionId).order('created_at', ascending: false);
       final list = (response as List).map((row) => Review.fromMap(row as Map<String, dynamic>)).toList();
-      if (list.isEmpty) return _fallback.reviews(companionId);
       return list;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase reviews error: $e\n$st');
       return _fallback.reviews(companionId);
     }
   }
@@ -182,7 +185,8 @@ class SupabaseCompanionRepository implements CompanionRepository {
       final data = review.toMap(companionId, authorId: userId?.toString());
       await client.from('reviews').insert(data);
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase addReview error: $e\n$st');
       return _fallback.addReview(companionId, review);
     }
   }
@@ -192,9 +196,18 @@ class SupabaseCompanionRepository implements CompanionRepository {
     try {
       final data = companion.toMap();
       if (userId != null) data['user_id'] = userId;
-      final res = await client.from('companions').upsert(data).select().single();
+      final isUuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false)
+          .hasMatch(companion.id);
+      dynamic res;
+      if (isUuid) {
+        data['id'] = companion.id;
+        res = await client.from('companions').upsert(data).select().single();
+      } else {
+        res = await client.from('companions').insert(data).select().single();
+      }
       return Companion.fromMap(res as Map<String, dynamic>);
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase createOrUpdateCompanion error: $e\n$st');
       return _fallback.createOrUpdateCompanion(companion, userId: userId);
     }
   }
@@ -230,9 +243,9 @@ class SupabaseCompanionRepository implements CompanionRepository {
       }
       final response = await builder;
       final list = (response as List).map((row) => Companion.fromMap(row as Map<String, dynamic>)).toList();
-      if (list.isEmpty && (query == null || query.isEmpty)) return _fallback.fetchCompanions();
       return list;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase searchCompanions error: $e\n$st');
       return _fallback.searchCompanions(
         query: query,
         city: city,
@@ -316,7 +329,8 @@ class SupabaseBookingRepository implements BookingRepository {
       final data = booking.toMap(clientId: userId.toString());
       final response = await client.from('bookings').insert(data).select().single();
       return Booking.fromMap(response as Map<String, dynamic>, booking.companion);
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase create booking error: $e\n$st');
       return _fallback.create(booking);
     }
   }
@@ -342,9 +356,9 @@ class SupabaseBookingRepository implements BookingRepository {
             : (await _companionRepo.byId(row['companion_id'].toString())) ?? MockCompanionRepository._data.first;
         list.add(Booking.fromMap(row as Map<String, dynamic>, companion));
       }
-      if (list.isEmpty) return _fallback.fetchUserBookings();
       return list;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase fetchUserBookings error: $e\n$st');
       return _fallback.fetchUserBookings();
     }
   }
@@ -354,7 +368,8 @@ class SupabaseBookingRepository implements BookingRepository {
     try {
       await client.from('bookings').update({'status': status.name}).eq('id', bookingId);
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase updateStatus error: $e\n$st');
       return _fallback.updateStatus(bookingId, status);
     }
   }
@@ -452,9 +467,9 @@ class SupabaseChatRepository implements ChatRepository {
           .map((row) => ChatMessage.fromMap(row as Map<String, dynamic>, currentUserId))
           .toList();
 
-      if (list.isEmpty) return _fallback.fetchMessages(companionId, userId: userId);
       return list;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase fetchMessages error: $e\n$st');
       return _fallback.fetchMessages(companionId, userId: userId);
     }
   }
@@ -462,15 +477,23 @@ class SupabaseChatRepository implements ChatRepository {
   @override
   Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId}) async {
     try {
-      final currentUserId = senderId ?? client.auth.currentUser?.id ?? 'mock-user';
-      final data = message.toMap(
-        senderId: currentUserId,
-        receiverId: companionId,
-        companionId: companionId,
-      );
+      final currentUserId = senderId ?? client.auth.currentUser?.id;
+      final data = <String, dynamic>{
+        'companion_id': companionId,
+        'text': message.text,
+        'type': message.type.name,
+        'is_read': false,
+      };
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        data['sender_id'] = currentUserId;
+      }
+      if (message.payload != null) {
+        data['payload'] = message.payload;
+      }
       final response = await client.from('chat_messages').insert(data).select().single();
-      return ChatMessage.fromMap(response as Map<String, dynamic>, currentUserId);
-    } catch (_) {
+      return ChatMessage.fromMap(response as Map<String, dynamic>, currentUserId ?? '');
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase sendMessage error: $e\n$st');
       return _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
     }
   }
@@ -478,8 +501,18 @@ class SupabaseChatRepository implements ChatRepository {
   @override
   Stream<ChatMessage> messageStream(String companionId) {
     try {
-      return _fallback.messageStream(companionId);
-    } catch (_) {
+      final currentUserId = client.auth.currentUser?.id ?? '';
+      return (client.from('chat_messages') as dynamic)
+          .stream(primaryKey: ['id'])
+          .eq('companion_id', companionId)
+          .order('created_at', ascending: true)
+          .asyncExpand<ChatMessage>((rows) async* {
+            for (final row in rows as List) {
+              yield ChatMessage.fromMap(row as Map<String, dynamic>, currentUserId);
+            }
+          });
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase messageStream error: $e\n$st');
       return _fallback.messageStream(companionId);
     }
   }

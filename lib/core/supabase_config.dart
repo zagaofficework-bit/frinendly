@@ -6,16 +6,15 @@ class SupabaseConfig {
   /// or pass it at run time: flutter run --dart-define=SUPABASE_URL=...
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: '', // Put your Supabase project URL here e.g. 'https://xyzcompany.supabase.co'
+    defaultValue: 'https://pjqtzecslzjilvloehva.supabase.co',
   );
 
   /// Supabase anon public API key.
-  /// Find this in Supabase Dashboard -> Project Settings -> API -> Project API Keys (anon public),
-  /// or pass it at run time: flutter run --dart-define=SUPABASE_ANON_KEY=...
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: '', // Put your Supabase anon key here
+    defaultValue: 'sb_publishable_mapsM_YGxpsj5myYeZzZBQ_vHR4J6xL',
   );
+
 
   /// Returns true only if valid credentials have been set.
   static bool get isConfigured =>
