@@ -166,143 +166,319 @@ class _AccountState extends ConsumerState<AccountScreen> {
             ])),
           ),
           const SizedBox(height: 16),
-          Text('Bookings', style: text.titleMedium),
-          const SizedBox(height: 8),
-          SegmentedButton<BookingTab>(
-            segments: const [
-              ButtonSegment(value: BookingTab.upcoming, label: Text('Upcoming')),
-              ButtonSegment(value: BookingTab.past, label: Text('Past')),
-              ButtonSegment(value: BookingTab.canceled, label: Text('Canceled')),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Bookings', style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${shown.length} ${tab.name}',
+                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ),
             ],
-            selected: {tab},
-            onSelectionChanged: (s) => setState(() => tab = s.first),
           ),
-          if (shown.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Nothing here yet'))),
-          for (final b in shown) Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<BookingTab>(
+              showSelectedIcon: false,
+              style: ButtonStyle(
+                visualDensity: VisualDensity.comfortable,
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              segments: const [
+                ButtonSegment(
+                  value: BookingTab.upcoming,
+                  label: Text('Upcoming', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                ButtonSegment(
+                  value: BookingTab.past,
+                  label: Text('Past', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                ButtonSegment(
+                  value: BookingTab.canceled,
+                  label: Text('Canceled', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+              selected: {tab},
+              onSelectionChanged: (s) => setState(() => tab = s.first),
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (shown.isEmpty)
+            Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                child: Center(
+                  child: Column(
                     children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage: NetworkImage(b.companion.avatarUrl),
-                        onBackgroundImageError: (_, __) {},
-                        child: Text(b.companion.name.isNotEmpty ? b.companion.name[0] : 'C'),
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 38,
+                        color: Theme.of(context).colorScheme.outline,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 10),
+                      Text(
+                        tab == BookingTab.upcoming
+                            ? 'No upcoming bookings'
+                            : (tab == BookingTab.past ? 'No past meetups' : 'No canceled bookings'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Browse companions to schedule your next platonic hangout.',
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (tab == BookingTab.upcoming) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: () => context.go('/explore'),
+                          icon: const Icon(Icons.explore_outlined, size: 16),
+                          label: const Text('Explore Companions'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          for (final b in shown)
+            Card(
+              elevation: 0,
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.7),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Stack(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '${b.activity} with ${b.companion.name}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                            CircleAvatar(
+                              radius: 26,
+                              backgroundImage: NetworkImage(b.companion.avatarUrl),
+                              onBackgroundImageError: (_, __) {},
+                              child: Text(b.companion.name.isNotEmpty ? b.companion.name[0] : 'C'),
+                            ),
+                            if (b.companion.verified)
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.blue,
+                                    shape: BoxShape.circle,
                                   ),
+                                  child: const Icon(Icons.check, size: 10, color: Colors.white),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _statusColor(b.status).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    b.status.name.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: _statusColor(b.status),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      b.companion.name,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: _statusColor(b.status).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      b.status.name.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: _statusColor(b.status),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
+                                child: Text(
+                                  b.activity,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_month_outlined, size: 14, color: Colors.grey),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${DateFormat.MMMEd().add_jm().format(b.start)} (${b.hours}h duration)',
+                                  style: text.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.place_outlined, size: 14, color: Colors.grey),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  b.location,
+                                  style: text.bodySmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.verified_outlined, size: 14, color: Colors.teal),
+                            const SizedBox(width: 4),
                             Text(
-                              '${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.hours}h',
-                              style: text.bodySmall,
-                            ),
-                            Text(
-                              '${b.location} · \$${b.total.toStringAsFixed(2)}',
-                              style: text.bodySmall?.copyWith(color: Theme.of(context).colorScheme.primary),
+                              'Escrow Protected',
+                              style: TextStyle(fontSize: 11, color: Colors.teal.shade700, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  if (b.isUpcoming) ...[
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.cancel_outlined, size: 16),
-                          label: const Text('Cancel'),
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Cancel Booking'),
-                                content: Text('Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-                                  FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Booking')),
-                                ],
-                              ),
-                            );
-                            if (confirm == true) {
-                              await ref.read(bookingsProvider.notifier).cancel(b.id);
-                            }
-                          },
+                        Text(
+                          'Total: \$${b.total.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        FilledButton.icon(
-                          icon: const Icon(Icons.check_circle_outline, size: 16),
-                          label: const Text('Complete Meetup'),
-                          onPressed: () async {
-                            await ref.read(bookingsProvider.notifier).complete(b.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
+                      ],
+                    ),
+                    if (b.isUpcoming) ...[
+                      const Divider(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.cancel_outlined, size: 16),
+                            label: const Text('Cancel'),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Cancel Booking'),
+                                  content: Text('Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+                                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Booking')),
+                                  ],
                                 ),
                               );
-                              _showPostMeetupReviewDialog(b);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
+                              if (confirm == true) {
+                                await ref.read(bookingsProvider.notifier).cancel(b.id);
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.check_circle_outline, size: 16),
+                            label: const Text('Complete Meetup'),
+                            onPressed: () async {
+                              await ref.read(bookingsProvider.notifier).complete(b.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
+                                  ),
+                                );
+                                _showPostMeetupReviewDialog(b);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (b.status == BookingStatus.completed) ...[
+                      const Divider(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            key: Key('rate_review_${b.id}'),
+                            icon: const Icon(Icons.star_rate_rounded, size: 16, color: Colors.amber),
+                            label: const Text('Rate & Review'),
+                            onPressed: () => _showPostMeetupReviewDialog(b),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                  if (b.status == BookingStatus.completed) ...[
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          key: Key('rate_review_${b.id}'),
-                          icon: const Icon(Icons.star_rate_rounded, size: 16, color: Colors.amber),
-                          label: const Text('Rate & Review'),
-                          onPressed: () => _showPostMeetupReviewDialog(b),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
-          ),
+
         const Divider(height: 32),
         Row(
           children: [
