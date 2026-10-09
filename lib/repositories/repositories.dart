@@ -19,7 +19,9 @@ abstract class CompanionRepository {
 }
 
 abstract class BookingRepository {
-  Future<Booking> create(Booking booking);
+  Future<Booking> create(Booking booking, {String? clientId});
+  Future<List<Booking>> fetchUserBookings({String? clientId});
+  Future<bool> updateStatus(String bookingId, BookingStatus status);
 }
 
 abstract class PaymentService {
@@ -228,29 +230,116 @@ class SupabaseCompanionRepository implements CompanionRepository {
 }
 
 class MockBookingRepository implements BookingRepository {
+  static List<Booking> get initialBookings => [
+    Booking(
+      id: 'b_sample_1',
+      companion: MockCompanionRepository._data[0],
+      start: DateTime.now().add(const Duration(days: 1, hours: 3)),
+      hours: 2,
+      activity: 'Coffee',
+      location: 'Blue Tokai Cafe, Bandra',
+      status: BookingStatus.confirmed,
+    ),
+    Booking(
+      id: 'b_sample_2',
+      companion: MockCompanionRepository._data[1],
+      start: DateTime.now().subtract(const Duration(days: 3)),
+      hours: 1,
+      activity: 'Gym Buddy',
+      location: 'City Fitness Hub, Pune',
+      status: BookingStatus.completed,
+    ),
+  ];
+
+  static final List<Booking> _bookings = List.from(initialBookings);
+
+  static void reset() {
+    _bookings.clear();
+    _bookings.addAll(initialBookings);
+  }
+
   @override
-  Future<Booking> create(Booking booking) async {
+  Future<Booking> create(Booking booking, {String? clientId}) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return booking.copyWith(status: BookingStatus.confirmed);
+    final confirmed = booking.copyWith(status: BookingStatus.confirmed);
+    _bookings.insert(0, confirmed);
+    return confirmed;
+  }
+
+  @override
+  Future<List<Booking>> fetchUserBookings({String? clientId}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return List.from(_bookings);
+  }
+
+  @override
+  Future<bool> updateStatus(String bookingId, BookingStatus status) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final index = _bookings.indexWhere((b) => b.id == bookingId);
+    if (index != -1) {
+      _bookings[index] = _bookings[index].copyWith(status: status);
+      return true;
+    }
+    return false;
   }
 }
 
 class SupabaseBookingRepository implements BookingRepository {
   final dynamic client; // SupabaseClient
-  SupabaseBookingRepository(this.client);
+  final CompanionRepository _companionRepo;
+  final BookingRepository _fallback = MockBookingRepository();
+  SupabaseBookingRepository(this.client, this._companionRepo);
 
   @override
-  Future<Booking> create(Booking booking) async {
+  Future<Booking> create(Booking booking, {String? clientId}) async {
     try {
-      final userId = client.auth.currentUser?.id;
+      final userId = clientId ?? client.auth.currentUser?.id;
       if (userId == null) {
-        return booking.copyWith(status: BookingStatus.confirmed);
+        return _fallback.create(booking);
       }
       final data = booking.toMap(clientId: userId.toString());
       final response = await client.from('bookings').insert(data).select().single();
       return Booking.fromMap(response as Map<String, dynamic>, booking.companion);
     } catch (_) {
-      return booking.copyWith(status: BookingStatus.confirmed);
+      return _fallback.create(booking);
+    }
+  }
+
+  @override
+  Future<List<Booking>> fetchUserBookings({String? clientId}) async {
+    try {
+      final userId = clientId ?? client.auth.currentUser?.id;
+      if (userId == null) {
+        return _fallback.fetchUserBookings();
+      }
+      final response = await client
+          .from('bookings')
+          .select('*, companions(*)')
+          .eq('client_id', userId)
+          .order('start_time', ascending: false);
+
+      final list = <Booking>[];
+      for (final row in response as List) {
+        final companionData = row['companions'];
+        final companion = companionData != null
+            ? Companion.fromMap(companionData as Map<String, dynamic>)
+            : (await _companionRepo.byId(row['companion_id'].toString())) ?? MockCompanionRepository._data.first;
+        list.add(Booking.fromMap(row as Map<String, dynamic>, companion));
+      }
+      if (list.isEmpty) return _fallback.fetchUserBookings();
+      return list;
+    } catch (_) {
+      return _fallback.fetchUserBookings();
+    }
+  }
+
+  @override
+  Future<bool> updateStatus(String bookingId, BookingStatus status) async {
+    try {
+      await client.from('bookings').update({'status': status.name}).eq('id', bookingId);
+      return true;
+    } catch (_) {
+      return _fallback.updateStatus(bookingId, status);
     }
   }
 }

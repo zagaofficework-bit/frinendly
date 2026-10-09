@@ -33,6 +33,13 @@ class _AccountState extends ConsumerState<AccountScreen> {
     if (v != null && v.isNotEmpty) ref.read(contactsProvider.notifier).add(v);
   }
 
+  Color _statusColor(BookingStatus s) => switch (s) {
+        BookingStatus.confirmed => Colors.green,
+        BookingStatus.completed => Colors.blue,
+        BookingStatus.canceled => Colors.red,
+        BookingStatus.pending => Colors.orange,
+      };
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -74,105 +81,210 @@ class _AccountState extends ConsumerState<AccountScreen> {
             ),
         ],
       ),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        if (authState.isAuthenticated)
-          Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                  child: Text(
-                    authState.user!.displayName.isNotEmpty ? authState.user!.displayName[0].toUpperCase() : 'U',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(authState.user!.displayName, style: text.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                    Text(authState.user!.email, style: text.bodySmall),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        authState.user!.isCompanion ? 'Verified Companion' : 'Verified Member',
-                        style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
-                      ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.read(bookingsProvider.notifier).refresh(),
+        child: ListView(padding: const EdgeInsets.all(16), children: [
+          if (authState.isAuthenticated)
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                    child: Text(
+                      authState.user!.displayName.isNotEmpty ? authState.user!.displayName[0].toUpperCase() : 'U',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                     ),
-                  ]),
-                ),
-              ]),
-            ),
-          )
-        else
-          Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Icon(Icons.account_circle_outlined, size: 36, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 12),
+                  ),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Welcome to Friendify', style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      const Text('Sign in to sync your bookings, chats, and emergency contacts.', style: TextStyle(fontSize: 12)),
+                      Text(authState.user!.displayName, style: text.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(authState.user!.email, style: text.bodySmall),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          authState.user!.isCompanion ? 'Verified Companion' : 'Verified Member',
+                          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
+                        ),
+                      ),
                     ]),
                   ),
                 ]),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => context.push('/auth'),
-                    child: const Text('Sign In or Register'),
+              ),
+            )
+          else
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Icon(Icons.account_circle_outlined, size: 36, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Welcome to Friendify', style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        const Text('Sign in to sync your bookings, chats, and emergency contacts.', style: TextStyle(fontSize: 12)),
+                      ]),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => context.push('/auth'),
+                      child: const Text('Sign In or Register'),
+                    ),
                   ),
-                ),
-              ]),
+                ]),
+              ),
+            ),
+          Card(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Wallet balance'),
+                Text('\$${wallet.toStringAsFixed(2)}', style: text.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+              ])),
+              FilledButton(
+                onPressed: wallet > 0 ? () { ref.read(walletProvider.notifier).withdraw(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payout initiated via Stripe (mock).'))); } : null,
+                child: const Text('Withdraw'),
+              ),
+            ])),
+          ),
+          const SizedBox(height: 16),
+          Text('Bookings', style: text.titleMedium),
+          const SizedBox(height: 8),
+          SegmentedButton<BookingTab>(
+            segments: const [
+              ButtonSegment(value: BookingTab.upcoming, label: Text('Upcoming')),
+              ButtonSegment(value: BookingTab.past, label: Text('Past')),
+              ButtonSegment(value: BookingTab.canceled, label: Text('Canceled')),
+            ],
+            selected: {tab},
+            onSelectionChanged: (s) => setState(() => tab = s.first),
+          ),
+          if (shown.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Nothing here yet'))),
+          for (final b in shown) Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundImage: NetworkImage(b.companion.avatarUrl),
+                        onBackgroundImageError: (_, __) {},
+                        child: Text(b.companion.name.isNotEmpty ? b.companion.name[0] : 'C'),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${b.activity} with ${b.companion.name}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(b.status).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    b.status.name.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: _statusColor(b.status),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.hours}h',
+                              style: text.bodySmall,
+                            ),
+                            Text(
+                              '${b.location} · \$${b.total.toStringAsFixed(2)}',
+                              style: text.bodySmall?.copyWith(color: Theme.of(context).colorScheme.primary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (b.isUpcoming) ...[
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.cancel_outlined, size: 16),
+                          label: const Text('Cancel'),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Cancel Booking'),
+                                content: Text('Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+                                  FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Booking')),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await ref.read(bookingsProvider.notifier).cancel(b.id);
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                          label: const Text('Complete Meetup'),
+                          onPressed: () async {
+                            await ref.read(bookingsProvider.notifier).complete(b.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-        Card(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Wallet balance'),
-              Text('\$${wallet.toStringAsFixed(2)}', style: text.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-            ])),
-            FilledButton(
-              onPressed: wallet > 0 ? () { ref.read(walletProvider.notifier).withdraw(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payout initiated via Stripe (mock).'))); } : null,
-              child: const Text('Withdraw'),
-            ),
-          ])),
-        ),
-        const SizedBox(height: 16),
-        Text('Bookings', style: text.titleMedium),
-        const SizedBox(height: 8),
-        SegmentedButton<BookingTab>(
-          segments: const [
-            ButtonSegment(value: BookingTab.upcoming, label: Text('Upcoming')),
-            ButtonSegment(value: BookingTab.past, label: Text('Past')),
-            ButtonSegment(value: BookingTab.canceled, label: Text('Canceled')),
-          ],
-          selected: {tab},
-          onSelectionChanged: (s) => setState(() => tab = s.first),
-        ),
-        if (shown.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Nothing here yet'))),
-        for (final b in shown) Card(child: ListTile(
-          leading: CircleAvatar(backgroundImage: NetworkImage(b.companion.avatarUrl)),
-          title: Text('${b.activity} with ${b.companion.name}'),
-          subtitle: Text('${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.hours}h\n${b.location} · \$${b.total.toStringAsFixed(2)}'),
-          isThreeLine: true,
-          trailing: b.isUpcoming ? IconButton(icon: const Icon(Icons.cancel_outlined), tooltip: 'Cancel', onPressed: () => ref.read(bookingsProvider.notifier).cancel(b.id)) : null,
-        )),
-        const Divider(height: 32),
+          const Divider(height: 32),
         Row(children: [
           Text('Emergency contacts', style: text.titleMedium),
           const Spacer(),
@@ -198,7 +310,7 @@ class _AccountState extends ConsumerState<AccountScreen> {
         ),
         SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Booking updates'), value: pushBookings, onChanged: (v) => setState(() => pushBookings = v)),
         SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Message notifications'), value: pushMessages, onChanged: (v) => setState(() => pushMessages = v)),
-      ]),
+      ])),
     );
   }
 }

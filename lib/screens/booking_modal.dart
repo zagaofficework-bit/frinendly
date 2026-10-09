@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/booking.dart';
 import '../models/companion.dart';
+import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
 import '../widgets/widgets.dart';
 
@@ -34,17 +35,38 @@ class _BookingModalState extends ConsumerState<BookingModal> {
   bool get canContinue => step != 2 || location.text.trim().isNotEmpty;
 
   Future<void> _pay() async {
+    final auth = ref.read(authProvider);
     setState(() => paying = true);
     final ok = await ref.read(paymentServiceProvider).checkout(Pricing.total(widget.companion.hourlyRate, hours));
     if (!ok) { if (mounted) setState(() => paying = false); return; }
-    await ref.read(bookingsProvider.notifier).add(Booking(
-      id: DateTime.now().millisecondsSinceEpoch.toString(), companion: widget.companion,
-      start: DateTime(date.year, date.month, date.day, time.hour, time.minute),
-      hours: hours, activity: activity, location: location.text.trim()));
+
+    await ref.read(bookingsProvider.notifier).add(
+      Booking(
+        id: 'b_${DateTime.now().millisecondsSinceEpoch}',
+        companion: widget.companion,
+        start: DateTime(date.year, date.month, date.day, time.hour, time.minute),
+        hours: hours,
+        activity: activity,
+        location: location.text.trim().isNotEmpty ? location.text.trim() : 'Public Venue',
+        status: BookingStatus.confirmed,
+      ),
+      clientId: auth.user?.id,
+    );
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    messenger.showSnackBar(const SnackBar(content: Text('Booking confirmed! Check your Account tab.')));
+    messenger.showSnackBar(
+      const SnackBar(
+        backgroundColor: Colors.green,
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Booking confirmed & payment secured in escrow!'),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _stepBody() {
@@ -107,8 +129,35 @@ class _BookingModalState extends ConsumerState<BookingModal> {
           ]),
         ]);
       default:
-        return Column(children: [
-          ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.event), title: Text('${DateFormat.MMMEd().format(date)} at ${time.format(context)}'), subtitle: Text('$activity @ ${location.text}')),
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.event),
+            title: Text('${DateFormat.MMMEd().format(date)} at ${time.format(context)}'),
+            subtitle: Text('$activity @ ${location.text.trim().isNotEmpty ? location.text.trim() : "Public Venue"}'),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.verified_user_outlined, color: Colors.green, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Escrow Protection: Funds will be held securely until your meetup is completed.',
+                    style: TextStyle(fontSize: 12, color: Colors.green),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           BookingSummary(companion: widget.companion, hours: hours),
         ]);
     }
@@ -138,7 +187,7 @@ class _BookingModalState extends ConsumerState<BookingModal> {
               FilledButton.icon(
                 onPressed: paying ? null : _pay,
                 icon: paying ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.lock_outline),
-                label: const Text('Pay with Stripe'),
+                label: Text('Secure Escrow (\$${Pricing.total(widget.companion.hourlyRate, hours).toStringAsFixed(0)})'),
               ),
           ]),
         ]),
