@@ -12,7 +12,6 @@ import '../widgets/safety_banner.dart';
 
 enum BookingTab { upcoming, past, canceled }
 
-
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
   @override
@@ -29,8 +28,16 @@ class _AccountState extends ConsumerState<AccountScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Add emergency contact'),
-        content: TextField(controller: c, decoration: const InputDecoration(hintText: 'Name • phone')),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Add'))],
+        content: TextField(
+            controller: c,
+            decoration: const InputDecoration(hintText: 'Name • phone')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, c.text.trim()),
+              child: const Text('Add'))
+        ],
       ),
     );
     c.dispose();
@@ -51,11 +58,14 @@ class _AccountState extends ConsumerState<AccountScreen> {
     final wallet = ref.watch(walletProvider);
     final contacts = ref.watch(contactsProvider);
     final mode = ref.watch(themeModeProvider);
-    final shown = bookings.where((b) => switch (tab) {
-          BookingTab.upcoming => b.isUpcoming,
-          BookingTab.past => !b.isUpcoming && b.status != BookingStatus.canceled,
-          BookingTab.canceled => b.status == BookingStatus.canceled,
-        }).toList();
+    final shown = bookings
+        .where((b) => switch (tab) {
+              BookingTab.upcoming => b.isUpcoming,
+              BookingTab.past =>
+                !b.isUpcoming && b.status != BookingStatus.canceled,
+              BookingTab.canceled => b.status == BookingStatus.canceled,
+            })
+        .toList();
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
@@ -73,8 +83,12 @@ class _AccountState extends ConsumerState<AccountScreen> {
                     title: const Text('Sign Out'),
                     content: const Text('Are you sure you want to sign out?'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign Out')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Sign Out')),
                     ],
                   ),
                 );
@@ -86,479 +100,407 @@ class _AccountState extends ConsumerState<AccountScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => ref.read(bookingsProvider.notifier).refresh(),
-        child: ListView(padding: const EdgeInsets.all(16), children: [
-          if (authState.isAuthenticated)
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                    child: Text(
-                      authState.user!.displayName.isNotEmpty ? authState.user!.displayName[0].toUpperCase() : 'U',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(authState.user!.displayName, style: text.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(authState.user!.email, style: text.bodySmall),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          authState.user!.isCompanion ? 'Verified Companion' : 'Verified Member',
-                          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
-                        ),
+          onRefresh: () async => ref.read(bookingsProvider.notifier).refresh(),
+          child: ListView(padding: const EdgeInsets.all(16), children: [
+            if (authState.isAuthenticated)
+              Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.2),
+                      child: Text(
+                        authState.user!.displayName.isNotEmpty
+                            ? authState.user!.displayName[0].toUpperCase()
+                            : 'U',
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary),
                       ),
-                    ]),
-                  ),
-                ]),
-              ),
-            )
-          else
-            Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Icon(Icons.account_circle_outlined, size: 36, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 12),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Welcome to Friendify', style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                        const Text('Sign in to sync your bookings, chats, and emergency contacts.', style: TextStyle(fontSize: 12)),
-                      ]),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(authState.user!.displayName,
+                                style: text.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold)),
+                            Text(authState.user!.email, style: text.bodySmall),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .secondaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                authState.user!.isCompanion
+                                    ? 'Verified Companion'
+                                    : 'Verified Member',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer),
+                              ),
+                            ),
+                          ]),
                     ),
                   ]),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => context.push('/auth'),
-                      child: const Text('Sign In or Register'),
+                ),
+              )
+            else
+              Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Icon(Icons.account_circle_outlined,
+                              size: 36,
+                              color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Welcome to Friendify',
+                                      style: text.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold)),
+                                  const Text(
+                                      'Sign in to sync your bookings, chats, and emergency contacts.',
+                                      style: TextStyle(fontSize: 12)),
+                                ]),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () => context.push('/auth'),
+                            child: const Text('Sign In or Register'),
+                          ),
+                        ),
+                      ]),
+                ),
+              ),
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(children: [
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          const Text('Wallet balance'),
+                          Text('\$${wallet.toStringAsFixed(2)}',
+                              style: text.headlineMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                        ])),
+                    FilledButton(
+                      onPressed: wallet > 0
+                          ? () {
+                              ref.read(walletProvider.notifier).withdraw();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Payout initiated via Stripe (mock).')));
+                            }
+                          : null,
+                      child: const Text('Withdraw'),
                     ),
-                  ),
-                ]),
-              ),
+                  ])),
             ),
-          Card(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Wallet balance'),
-                Text('\$${wallet.toStringAsFixed(2)}', style: text.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-              ])),
-              FilledButton(
-                onPressed: wallet > 0 ? () { ref.read(walletProvider.notifier).withdraw(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payout initiated via Stripe (mock).'))); } : null,
-                child: const Text('Withdraw'),
-              ),
-            ])),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Bookings', style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${shown.length} ${tab.name}',
-                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<BookingTab>(
-              showSelectedIcon: false,
-              style: ButtonStyle(
-                visualDensity: VisualDensity.comfortable,
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
+            const SizedBox(height: 16),
+            Text('Bookings', style: text.titleMedium),
+            const SizedBox(height: 8),
+            SegmentedButton<BookingTab>(
               segments: const [
                 ButtonSegment(
-                  value: BookingTab.upcoming,
-                  label: Text('Upcoming', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
+                    value: BookingTab.upcoming, label: Text('Upcoming')),
+                ButtonSegment(value: BookingTab.past, label: Text('Past')),
                 ButtonSegment(
-                  value: BookingTab.past,
-                  label: Text('Past', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
-                ButtonSegment(
-                  value: BookingTab.canceled,
-                  label: Text('Canceled', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
+                    value: BookingTab.canceled, label: Text('Canceled')),
               ],
               selected: {tab},
               onSelectionChanged: (s) => setState(() => tab = s.first),
             ),
-          ),
-          const SizedBox(height: 10),
-          if (shown.isEmpty)
-            Card(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.surfaceContainerLowest,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
-              ),
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-                child: Center(
+            if (shown.isEmpty)
+              const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('Nothing here yet'))),
+            for (final b in shown)
+              Card(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 38,
-                        color: Theme.of(context).colorScheme.outline,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundImage:
+                                NetworkImage(b.companion.avatarUrl),
+                            onBackgroundImageError: (_, __) {},
+                            child: Text(b.companion.name.isNotEmpty
+                                ? b.companion.name[0]
+                                : 'C'),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${b.activity} with ${b.companion.name}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _statusColor(b.status)
+                                            .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        b.status.name.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: _statusColor(b.status),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.hours}h',
+                                  style: text.bodySmall,
+                                ),
+                                Text(
+                                  '${b.location} · \$${b.total.toStringAsFixed(2)}',
+                                  style: text.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        tab == BookingTab.upcoming
-                            ? 'No upcoming bookings'
-                            : (tab == BookingTab.past ? 'No past meetups' : 'No canceled bookings'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Browse companions to schedule your next platonic hangout.',
-                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (tab == BookingTab.upcoming) ...[
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => context.go('/explore'),
-                          icon: const Icon(Icons.explore_outlined, size: 16),
-                          label: const Text('Explore Companions'),
+                      if (b.isUpcoming) ...[
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.cancel_outlined, size: 16),
+                              label: const Text('Cancel'),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Cancel Booking'),
+                                    content: Text(
+                                        'Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text('Keep')),
+                                      FilledButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text('Cancel Booking')),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await ref
+                                      .read(bookingsProvider.notifier)
+                                      .cancel(b.id);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              icon: const Icon(Icons.check_circle_outline,
+                                  size: 16),
+                              label: const Text('Complete Meetup'),
+                              onPressed: () async {
+                                await ref
+                                    .read(bookingsProvider.notifier)
+                                    .complete(b.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
+                                    ),
+                                  );
+                                  _showPostMeetupReviewDialog(b);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (b.status == BookingStatus.completed) ...[
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              key: Key('rate_review_${b.id}'),
+                              icon: const Icon(Icons.star_rate_rounded,
+                                  size: 16, color: Colors.amber),
+                              label: const Text('Rate & Review'),
+                              onPressed: () => _showPostMeetupReviewDialog(b),
+                            ),
+                          ],
                         ),
                       ],
                     ],
                   ),
                 ),
               ),
+            const Divider(height: 32),
+            Row(
+              children: [
+                const Icon(Icons.shield_outlined, color: Colors.teal),
+                const SizedBox(width: 8),
+                Text('Trust & Safety Center', style: text.titleMedium),
+              ],
             ),
-          for (final b in shown)
-            Card(
-              elevation: 0,
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.7),
-                ),
-              ),
+            const SizedBox(height: 8),
+            Card.outlined(
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 26,
-                              backgroundImage: NetworkImage(b.companion.avatarUrl),
-                              onBackgroundImageError: (_, __) {},
-                              child: Text(b.companion.name.isNotEmpty ? b.companion.name[0] : 'C'),
-                            ),
-                            if (b.companion.verified)
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.blue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.check, size: 10, color: Colors.white),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      b.companion.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: _statusColor(b.status).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      b.status.name.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: _statusColor(b.status),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  b.activity,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        const Icon(Icons.verified_user_outlined,
+                            color: Colors.blue, size: 20),
+                        const SizedBox(width: 8),
+                        Text('100% Platonic Verified',
+                            style: text.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.bold)),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Every companion undergoes identity verification and community screening. Meetups are strictly platonic and public-place only.',
+                      style: TextStyle(fontSize: 12),
                     ),
                     const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.calendar_month_outlined, size: 14, color: Colors.grey),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  '${DateFormat.MMMEd().add_jm().format(b.start)} (${b.hours}h duration)',
-                                  style: text.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              const Icon(Icons.place_outlined, size: 14, color: Colors.grey),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  b.location,
-                                  style: text.bodySmall,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.verified_outlined, size: 14, color: Colors.teal),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Escrow Protected',
-                              style: TextStyle(fontSize: 11, color: Colors.teal.shade700, fontWeight: FontWeight.w500),
-                            ),
-                          ],
+                        ActionChip(
+                          avatar: const Icon(Icons.sos,
+                              color: Colors.red, size: 16),
+                          label: const Text('Test SOS Trigger'),
+                          onPressed: () => showSosSheet(context, ref),
                         ),
-                        Text(
-                          'Total: \$${b.total.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                        ActionChip(
+                          avatar: const Icon(Icons.rule_outlined, size: 16),
+                          label: const Text('Code of Conduct'),
+                          onPressed: _showCodeOfConductDialog,
+                        ),
+                        ActionChip(
+                          avatar:
+                              const Icon(Icons.lock_clock_outlined, size: 16),
+                          label: const Text('Escrow Guarantee'),
+                          onPressed: _showEscrowInfoDialog,
                         ),
                       ],
                     ),
-                    if (b.isUpcoming) ...[
-                      const Divider(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.cancel_outlined, size: 16),
-                            label: const Text('Cancel'),
-                            onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('Cancel Booking'),
-                                  content: Text('Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-                                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Booking')),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) {
-                                await ref.read(bookingsProvider.notifier).cancel(b.id);
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton.icon(
-                            icon: const Icon(Icons.check_circle_outline, size: 16),
-                            label: const Text('Complete Meetup'),
-                            onPressed: () async {
-                              await ref.read(bookingsProvider.notifier).complete(b.id);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
-                                  ),
-                                );
-                                _showPostMeetupReviewDialog(b);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (b.status == BookingStatus.completed) ...[
-                      const Divider(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            key: Key('rate_review_${b.id}'),
-                            icon: const Icon(Icons.star_rate_rounded, size: 16, color: Colors.amber),
-                            label: const Text('Rate & Review'),
-                            onPressed: () => _showPostMeetupReviewDialog(b),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),
             ),
-
-        const Divider(height: 32),
-        Row(
-          children: [
-            const Icon(Icons.shield_outlined, color: Colors.teal),
-            const SizedBox(width: 8),
-            Text('Trust & Safety Center', style: text.titleMedium),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Card.outlined(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.verified_user_outlined, color: Colors.blue, size: 20),
-                    const SizedBox(width: 8),
-                    Text('100% Platonic Verified', style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Every companion undergoes identity verification and community screening. Meetups are strictly platonic and public-place only.',
-                  style: TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ActionChip(
-                      avatar: const Icon(Icons.sos, color: Colors.red, size: 16),
-                      label: const Text('Test SOS Trigger'),
-                      onPressed: () => showSosSheet(context, ref),
-                    ),
-                    ActionChip(
-                      avatar: const Icon(Icons.rule_outlined, size: 16),
-                      label: const Text('Code of Conduct'),
-                      onPressed: _showCodeOfConductDialog,
-                    ),
-                    ActionChip(
-                      avatar: const Icon(Icons.lock_clock_outlined, size: 16),
-                      label: const Text('Escrow Guarantee'),
-                      onPressed: _showEscrowInfoDialog,
-                    ),
-                  ],
-                ),
+            const Divider(height: 32),
+            Row(children: [
+              Text('Emergency contacts', style: text.titleMedium),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.add), onPressed: _addContact),
+            ]),
+            for (final c in contacts)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.contact_emergency_outlined),
+                title: Text(c),
+                trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () =>
+                        ref.read(contactsProvider.notifier).remove(c)),
+              ),
+            const Divider(height: 32),
+            Text('Settings', style: text.titleMedium),
+            const SizedBox(height: 8),
+            SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode),
+                    label: Text('Light')),
+                ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.brightness_auto),
+                    label: Text('Auto')),
+                ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode),
+                    label: Text('Dark')),
               ],
+              selected: {mode},
+              onSelectionChanged: (s) =>
+                  ref.read(themeModeProvider.notifier).set(s.first),
             ),
-          ),
-        ),
-        const Divider(height: 32),
-        Row(children: [
-          Text('Emergency contacts', style: text.titleMedium),
-          const Spacer(),
-          IconButton(icon: const Icon(Icons.add), onPressed: _addContact),
-        ]),
-        for (final c in contacts) ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.contact_emergency_outlined),
-          title: Text(c),
-          trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => ref.read(contactsProvider.notifier).remove(c)),
-        ),
-        const Divider(height: 32),
-        Text('Settings', style: text.titleMedium),
-        const SizedBox(height: 8),
-        SegmentedButton<ThemeMode>(
-          segments: const [
-            ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode), label: Text('Light')),
-            ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto), label: Text('Auto')),
-            ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode), label: Text('Dark')),
-          ],
-          selected: {mode},
-          onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
-        ),
-        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Booking updates'), value: pushBookings, onChanged: (v) => setState(() => pushBookings = v)),
-        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Message notifications'), value: pushMessages, onChanged: (v) => setState(() => pushMessages = v)),
-      ])),
+            SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Booking updates'),
+                value: pushBookings,
+                onChanged: (v) => setState(() => pushBookings = v)),
+            SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Message notifications'),
+                value: pushMessages,
+                onChanged: (v) => setState(() => pushMessages = v)),
+          ])),
     );
   }
 
@@ -577,17 +519,23 @@ class _AccountState extends ConsumerState<AccountScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('1. Purely Platonic: Friendify is strictly for non-romantic friendship and companionship.'),
+            Text(
+                '1. Purely Platonic: Friendify is strictly for non-romantic friendship and companionship.'),
             SizedBox(height: 8),
-            Text('2. Public Places Only: Initial and ongoing meetups must occur in verified public venues.'),
+            Text(
+                '2. Public Places Only: Initial and ongoing meetups must occur in verified public venues.'),
             SizedBox(height: 8),
-            Text('3. Mutual Respect: Zero tolerance for harassment, offensive behavior, or non-consensual contact.'),
+            Text(
+                '3. Mutual Respect: Zero tolerance for harassment, offensive behavior, or non-consensual contact.'),
             SizedBox(height: 8),
-            Text('4. Platform Escrow: All transactions must stay on Friendify for fraud protection.'),
+            Text(
+                '4. Platform Escrow: All transactions must stay on Friendify for fraud protection.'),
           ],
         ),
         actions: [
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Understood')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Understood')),
         ],
       ),
     );
@@ -608,15 +556,19 @@ class _AccountState extends ConsumerState<AccountScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('• Funds Authorized On Booking: Your payment is held securely in escrow and not charged until meetup.'),
+            Text(
+                '• Funds Authorized On Booking: Your payment is held securely in escrow and not charged until meetup.'),
             SizedBox(height: 8),
-            Text('• Automatic Payout Release: After mutual check-in and meetup conclusion, 85% is released to the companion.'),
+            Text(
+                '• Automatic Payout Release: After mutual check-in and meetup conclusion, 85% is released to the companion.'),
             SizedBox(height: 8),
-            Text('• 100% Refund on Cancellations: If either party cancels before check-in, full refund is credited back immediately.'),
+            Text(
+                '• 100% Refund on Cancellations: If either party cancels before check-in, full refund is credited back immediately.'),
           ],
         ),
         actions: [
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Got It')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Got It')),
         ],
       ),
     );
@@ -633,7 +585,8 @@ class _MeetupReviewDialog extends ConsumerStatefulWidget {
   const _MeetupReviewDialog({required this.booking});
 
   @override
-  ConsumerState<_MeetupReviewDialog> createState() => _MeetupReviewDialogState();
+  ConsumerState<_MeetupReviewDialog> createState() =>
+      _MeetupReviewDialogState();
 }
 
 class _MeetupReviewDialogState extends ConsumerState<_MeetupReviewDialog> {
@@ -650,103 +603,167 @@ class _MeetupReviewDialogState extends ConsumerState<_MeetupReviewDialog> {
   @override
   Widget build(BuildContext context) {
     final b = widget.booking;
-    return AlertDialog(
-      title: Row(
-        children: [
-          const Icon(Icons.star_rounded, color: Colors.amber, size: 28),
-          const SizedBox(width: 8),
-          Expanded(child: Text('Review ${b.companion.name}')),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('How was your platonic meetup experience?'),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                final starVal = index + 1.0;
-                return IconButton(
-                  icon: Icon(
-                    starVal <= _selectedRating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
-                    size: 32,
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.star_rounded, color: Colors.amber, size: 24),
                   ),
-                  onPressed: () => setState(() => _selectedRating = starVal),
-                );
-              }),
-            ),
-            Center(
-              child: Text(
-                '${_selectedRating.toInt()} / 5 Stars',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Review ${b.companion.name}',
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'How was your platonic meetup experience?',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('meetup_review_text_field'),
-              controller: _commentController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Share feedback (punctuality, great conversation, activities...)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(5, (index) {
+                    final starVal = index + 1.0;
+                    final isFilled = starVal <= _selectedRating;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => setState(() => _selectedRating = starVal),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Icon(
+                          isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+                          color: Colors.amber,
+                          size: 36,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text('Optional Host Tip:'),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [0.0, 5.0, 10.0, 20.0].map((tip) {
-                final isSelected = _selectedTip == tip;
-                return ChoiceChip(
-                  label: Text(tip == 0.0 ? 'No tip' : '\$${tip.toInt()}'),
-                  selected: isSelected,
-                  onSelected: (_) => setState(() => _selectedTip = tip),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Later'),
-        ),
-        FilledButton(
-          key: const Key('submit_meetup_review_button'),
-          onPressed: () async {
-            final auth = ref.read(authProvider);
-            final review = Review(
-              author: auth.user?.displayName ?? 'Verified Member',
-              rating: _selectedRating,
-              text: _commentController.text.trim().isEmpty
-                  ? 'Great meetup experience! Highly recommended.'
-                  : _commentController.text.trim(),
-              date: DateTime.now(),
-            );
-
-            await submitReview(ref, b.companion.id, review);
-            if (context.mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Thank you! Your ${_selectedRating.toInt()}-star review for ${b.companion.name} was published.${_selectedTip > 0 ? ' \$${_selectedTip.toInt()} tip added!' : ''}',
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  '${_selectedRating.toInt()} / 5 Stars',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                key: const Key('meetup_review_text_field'),
+                controller: _commentController,
+                maxLines: 3,
+                minLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'Share feedback (punctuality, great conversation, activities...)',
+                  hintStyle: const TextStyle(fontSize: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
                   ),
                 ),
-              );
-            }
-          },
-          child: const Text('Submit Review'),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Optional Host Tip:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [0.0, 5.0, 10.0, 20.0].map((tip) {
+                  final isSelected = _selectedTip == tip;
+                  return ChoiceChip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text(
+                      tip == 0.0 ? 'No tip' : '\$${tip.toInt()}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    selected: isSelected,
+                    onSelected: (_) => setState(() => _selectedTip = tip),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Later'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    key: const Key('submit_meetup_review_button'),
+                    onPressed: () async {
+                      final auth = ref.read(authProvider);
+                      final review = Review(
+                        author: auth.user?.displayName ?? 'Verified Member',
+                        rating: _selectedRating,
+                        text: _commentController.text.trim().isEmpty
+                            ? 'Great meetup experience! Highly recommended.'
+                            : _commentController.text.trim(),
+                        date: DateTime.now(),
+                      );
+
+                      await submitReview(ref, b.companion.id, review);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Thank you! Your ${_selectedRating.toInt()}-star review for ${b.companion.name} was published.${_selectedTip > 0 ? ' \$${_selectedTip.toInt()} tip added!' : ''}',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Submit Review'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
-
 }
-
