@@ -53,4 +53,44 @@ class Companion {
     'activities': activities,
     'badges': badges,
   };
+
+  Companion copyWith({
+    String? id,
+    String? name,
+    int? age,
+    String? bio,
+    String? avatarUrl,
+    String? city,
+    double? hourlyRate,
+    double? rating,
+    int? reviewCount,
+    double? distanceKm,
+    bool? verified,
+    bool? backgroundChecked,
+    List<String>? gallery,
+    List<String>? languages,
+    List<String>? tags,
+    List<String>? activities,
+    List<String>? badges,
+  }) =>
+      Companion(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        age: age ?? this.age,
+        bio: bio ?? this.bio,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
+        city: city ?? this.city,
+        hourlyRate: hourlyRate ?? this.hourlyRate,
+        rating: rating ?? this.rating,
+        reviewCount: reviewCount ?? this.reviewCount,
+        distanceKm: distanceKm ?? this.distanceKm,
+        verified: verified ?? this.verified,
+        backgroundChecked: backgroundChecked ?? this.backgroundChecked,
+        gallery: gallery ?? this.gallery,
+        languages: languages ?? this.languages,
+        tags: tags ?? this.tags,
+        activities: activities ?? this.activities,
+        badges: badges ?? this.badges,
+      );
 }
+

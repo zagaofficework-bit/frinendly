@@ -76,11 +76,25 @@ class MockCompanionRepository implements CompanionRepository {
 
   @override
   Future<bool> addReview(String companionId, Review review) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 100));
     final list = _reviewsMap.putIfAbsent(companionId, () => []);
     list.insert(0, review);
+
+    final index = _data.indexWhere((c) => c.id == companionId);
+    if (index != -1) {
+      final old = _data[index];
+      final newCount = old.reviewCount + 1;
+      final newRating = double.parse(
+        (((old.rating * old.reviewCount) + review.rating) / newCount).toStringAsFixed(1),
+      );
+      _data[index] = old.copyWith(
+        rating: newRating,
+        reviewCount: newCount,
+      );
+    }
     return true;
   }
+
 
   @override
   Future<Companion> createOrUpdateCompanion(Companion companion, {String? userId}) async {
