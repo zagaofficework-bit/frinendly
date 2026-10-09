@@ -1,4 +1,6 @@
+import 'dart:async';
 import '../models/booking.dart';
+import '../models/chat_message.dart';
 import '../models/companion.dart';
 import '../models/review.dart';
 
@@ -340,6 +342,131 @@ class SupabaseBookingRepository implements BookingRepository {
       return true;
     } catch (_) {
       return _fallback.updateStatus(bookingId, status);
+    }
+  }
+}
+
+abstract class ChatRepository {
+  Future<List<ChatMessage>> fetchMessages(String companionId, {String? userId});
+  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId});
+  Stream<ChatMessage> messageStream(String companionId);
+}
+
+class MockChatRepository implements ChatRepository {
+  static bool simulateAutoReply = false;
+  static final Map<String, List<ChatMessage>> _threads = {};
+  static final StreamController<MapEntry<String, ChatMessage>> _streamController =
+      StreamController<MapEntry<String, ChatMessage>>.broadcast();
+
+  static void reset() {
+    _threads.clear();
+    simulateAutoReply = false;
+  }
+
+  static void _initThreadIfEmpty(String companionId) {
+    if (_threads.containsKey(companionId)) return;
+    _threads[companionId] = [
+      ChatMessage(
+        id: 'msg_1',
+        text: 'Hi! Excited for our meetup 😊',
+        mine: false,
+        time: DateTime.now().subtract(const Duration(minutes: 30)),
+      ),
+      ChatMessage(
+        id: 'msg_2',
+        text: 'Same here! Looking forward to seeing you.',
+        mine: true,
+        time: DateTime.now().subtract(const Duration(minutes: 28)),
+      ),
+    ];
+  }
+
+  @override
+  Future<List<ChatMessage>> fetchMessages(String companionId, {String? userId}) async {
+    _initThreadIfEmpty(companionId);
+    return List.from(_threads[companionId]!);
+  }
+
+  @override
+  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId}) async {
+    _initThreadIfEmpty(companionId);
+    _threads[companionId]!.add(message);
+    _streamController.add(MapEntry(companionId, message));
+
+    if (message.mine && simulateAutoReply) {
+      final reply = ChatMessage(
+        id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
+        text: message.type == MessageType.location
+            ? 'Awesome! That meetup spot looks great. See you there! 📍'
+            : 'Sounds great! I will be there right on time.',
+        mine: false,
+        time: DateTime.now(),
+      );
+      _threads[companionId]?.add(reply);
+      _streamController.add(MapEntry(companionId, reply));
+    }
+
+    return message;
+  }
+
+  @override
+  Stream<ChatMessage> messageStream(String companionId) {
+    _initThreadIfEmpty(companionId);
+    return _streamController.stream
+        .where((entry) => entry.key == companionId)
+        .map((entry) => entry.value);
+  }
+}
+
+
+class SupabaseChatRepository implements ChatRepository {
+  final dynamic client; // SupabaseClient
+  final ChatRepository _fallback = MockChatRepository();
+  SupabaseChatRepository(this.client);
+
+  @override
+  Future<List<ChatMessage>> fetchMessages(String companionId, {String? userId}) async {
+    try {
+      final currentUserId = userId ?? client.auth.currentUser?.id ?? '';
+      final response = await client
+          .from('chat_messages')
+          .select()
+          .eq('companion_id', companionId)
+          .order('created_at', ascending: true);
+
+      final list = (response as List)
+          .map((row) => ChatMessage.fromMap(row as Map<String, dynamic>, currentUserId))
+          .toList();
+
+      if (list.isEmpty) return _fallback.fetchMessages(companionId, userId: userId);
+      return list;
+    } catch (_) {
+      return _fallback.fetchMessages(companionId, userId: userId);
+    }
+  }
+
+  @override
+  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId}) async {
+    try {
+      final currentUserId = senderId ?? client.auth.currentUser?.id ?? 'mock-user';
+      final data = message.toMap(
+        senderId: currentUserId,
+        receiverId: companionId,
+        companionId: companionId,
+      );
+      final response = await client.from('chat_messages').insert(data).select().single();
+      return ChatMessage.fromMap(response as Map<String, dynamic>, currentUserId);
+    } catch (_) {
+      return _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
+    }
+  }
+
+  @override
+  Stream<ChatMessage> messageStream(String companionId) {
+    try {
+      return _fallback.messageStream(companionId);
+    } catch (_) {
+      return _fallback.messageStream(companionId);
     }
   }
 }
