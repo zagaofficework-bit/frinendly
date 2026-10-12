@@ -180,6 +180,11 @@ class SupabaseCompanionRepository implements CompanionRepository {
 
   @override
   Future<bool> addReview(String companionId, Review review) async {
+    final isUuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false)
+        .hasMatch(companionId);
+    if (!isUuid) {
+      return _fallback.addReview(companionId, review);
+    }
     try {
       final userId = client.auth.currentUser?.id;
       final data = review.toMap(companionId, authorId: userId?.toString());

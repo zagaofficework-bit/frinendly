@@ -62,7 +62,9 @@ class _BookingModalState extends ConsumerState<BookingModal> {
           children: [
             Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: 8),
-            Text('Booking confirmed & payment secured in escrow!'),
+            Expanded(
+              child: Text('Booking confirmed & payment secured in escrow!'),
+            ),
           ],
         ),
       ),
@@ -178,18 +180,37 @@ class _BookingModalState extends ConsumerState<BookingModal> {
           const SizedBox(height: 8),
           _stepBody(),
           const SizedBox(height: 16),
-          Row(children: [
-            if (step > 0) TextButton(onPressed: paying ? null : () => setState(() => step--), child: const Text('Back')),
-            const Spacer(),
-            if (step < 3)
-              FilledButton(onPressed: canContinue ? () => setState(() => step++) : null, child: const Text('Continue'))
-            else
-              FilledButton.icon(
-                onPressed: paying ? null : _pay,
-                icon: paying ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.lock_outline),
-                label: Text('Secure Escrow (\$${Pricing.total(widget.companion.hourlyRate, hours).toStringAsFixed(0)})'),
+          Row(
+            children: [
+              if (step > 0)
+                TextButton(
+                  onPressed: paying ? null : () => setState(() => step--),
+                  child: const Text('Back'),
+                ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: step < 3
+                    ? FilledButton(
+                        onPressed: canContinue ? () => setState(() => step++) : null,
+                        child: const Text('Continue'),
+                      )
+                    : FilledButton.icon(
+                        onPressed: paying ? null : _pay,
+                        icon: paying
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.lock_outline),
+                        label: Text(
+                          'Secure Escrow (\$${Pricing.total(widget.companion.hourlyRate, hours).toStringAsFixed(0)})',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
               ),
-          ]),
+            ],
+          ),
         ]),
       ),
     );
