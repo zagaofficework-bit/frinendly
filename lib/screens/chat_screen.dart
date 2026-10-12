@@ -20,106 +20,135 @@ class ChatInboxScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = ref.watch(threadsProvider);
+    final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(allCompanionsProvider);
+          ref.invalidate(myCompanionProfileProvider);
           await ref.read(allCompanionsProvider.future);
         },
-        child: threads.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('No conversations yet')),
-                ],
-              )
-            : ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: threads.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (_, i) {
-                  final t = threads[i];
-                  return ListTile(
-                    onTap: () => context.push('/chat/${t.companion.id}'),
-                    leading: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 26,
-                          backgroundImage: t.companion.avatarUrl.isNotEmpty
-                              ? NetworkImage(t.companion.avatarUrl)
-                              : null,
-                          onBackgroundImageError: t.companion.avatarUrl.isNotEmpty
-                              ? (_, __) {}
-                              : null,
-                          child: t.companion.avatarUrl.isEmpty
-                              ? Text(
-                                  t.companion.name.isNotEmpty
-                                      ? t.companion.name[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                )
-                              : null,
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: t.online ? Colors.green : Colors.grey,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.surface,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            if (myCompanion != null)
+              Card(
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                color: Colors.teal.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.teal,
+                    child: Icon(Icons.record_voice_over, color: Colors.white, size: 20),
+                  ),
+                  title: Text('${myCompanion.name} (Host Inbox)',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('View and reply to client inquiries & bookings'),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.teal),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatRoomScreen(
+                        companionId: myCompanion.id,
+                        clientName: 'Client Inquiries',
+                        clientId: 'client_inquiries',
+                      ),
                     ),
-                    title: Row(
-                      children: [
-                        Text(t.companion.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _statusColor(t.bookingStatus).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            t.bookingStatus,
-                            style: TextStyle(fontSize: 11, color: _statusColor(t.bookingStatus)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Text(t.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (t.lastMessageTime != null)
-                          Text(
-                            _formatTime(t.lastMessageTime!),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        if (t.unread > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Badge(label: Text('${t.unread}')),
-                          ),
-                      ],
-                    ),
-                  );
-                },
+                  ),
+                ),
               ),
+            if (threads.isEmpty && myCompanion == null) ...[
+              const SizedBox(height: 120),
+              const Center(child: Text('No conversations yet')),
+            ] else
+              for (var i = 0; i < threads.length; i++) ...[
+                if (i > 0 || myCompanion != null) const Divider(height: 1),
+                _buildThreadTile(context, threads[i]),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThreadTile(BuildContext context, ChatThread t) {
+    return ListTile(
+      onTap: () => context.push('/chat/${t.companion.id}'),
+      leading: Stack(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundImage: t.companion.avatarUrl.isNotEmpty
+                ? NetworkImage(t.companion.avatarUrl)
+                : null,
+            onBackgroundImageError: t.companion.avatarUrl.isNotEmpty
+                ? (_, __) {}
+                : null,
+            child: t.companion.avatarUrl.isEmpty
+                ? Text(
+                    t.companion.name.isNotEmpty
+                        ? t.companion.name[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  )
+                : null,
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: t.online ? Colors.green : Colors.grey,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      title: Row(
+        children: [
+          Text(t.companion.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: _statusColor(t.bookingStatus).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              t.bookingStatus,
+              style: TextStyle(fontSize: 11, color: _statusColor(t.bookingStatus)),
+            ),
+          ),
+        ],
+      ),
+      subtitle: Text(t.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (t.lastMessageTime != null)
+            Text(
+              _formatTime(t.lastMessageTime!),
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          if (t.unread > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Badge(label: Text('${t.unread}')),
+            ),
+        ],
       ),
     );
   }
@@ -135,7 +164,14 @@ class ChatInboxScreen extends ConsumerWidget {
 
 class ChatRoomScreen extends ConsumerStatefulWidget {
   final String companionId;
-  const ChatRoomScreen({super.key, required this.companionId});
+  final String? clientName;
+  final String? clientId;
+  const ChatRoomScreen({
+    super.key,
+    required this.companionId,
+    this.clientName,
+    this.clientId,
+  });
 
   @override
   ConsumerState<ChatRoomScreen> createState() => _ChatRoomState();
@@ -170,7 +206,10 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     if (text.isEmpty) return;
     controller.clear();
     try {
-      await ref.read(chatMessagesProvider(widget.companionId).notifier).send(text);
+      await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
+        text,
+        receiverId: widget.clientId,
+      );
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
@@ -188,6 +227,7 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
       '📍 Meetup spot: $name',
       type: MessageType.location,
+      receiverId: widget.clientId,
       payload: {
         'location_name': name,
         'latitude': lat,
@@ -201,6 +241,7 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
       'Voice note (0:${durationSeconds.toString().padLeft(2, '0')})',
       type: MessageType.voice,
+      receiverId: widget.clientId,
       payload: {
         'duration_seconds': durationSeconds,
       },
@@ -306,8 +347,10 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     final auth = ref.watch(authProvider);
     final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
 
-    final isSelf = (auth.user != null && c?.userId != null && c!.userId == auth.user!.id) ||
-        (myCompanion != null && myCompanion.id == widget.companionId);
+    final isHostMode = widget.clientId != null;
+    final isSelf = !isHostMode &&
+        ((auth.user != null && c?.userId != null && c!.userId == auth.user!.id) ||
+        (myCompanion != null && myCompanion.id == widget.companionId));
 
     if (isSelf) {
       return Scaffold(
@@ -359,15 +402,20 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
       }
     });
 
+    final partnerName = isHostMode ? (widget.clientName ?? 'Client Inquiry') : (c?.name ?? 'Companion');
+    final partnerSubtitle = isHostMode ? 'Client • Booking Inquirer' : 'Online • Platonic Match';
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundImage: (c != null && c.avatarUrl.isNotEmpty) ? NetworkImage(c.avatarUrl) : null,
-              onBackgroundImageError: (c != null && c.avatarUrl.isNotEmpty) ? (_, __) {} : null,
-              child: (c == null || c.avatarUrl.isEmpty) ? const Icon(Icons.person, size: 16) : null,
+              backgroundImage: (!isHostMode && c != null && c.avatarUrl.isNotEmpty) ? NetworkImage(c.avatarUrl) : null,
+              onBackgroundImageError: (!isHostMode && c != null && c.avatarUrl.isNotEmpty) ? (_, __) {} : null,
+              child: (isHostMode || c == null || c.avatarUrl.isEmpty)
+                  ? Text(partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U')
+                  : null,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -375,10 +423,13 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(c?.name ?? 'Companion', style: const TextStyle(fontSize: 16)),
+                  Text(partnerName, style: const TextStyle(fontSize: 16)),
                   Text(
-                    'Online • Platonic Match',
-                    style: TextStyle(fontSize: 11, color: Colors.green.shade600),
+                    partnerSubtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isHostMode ? Colors.blue.shade600 : Colors.green.shade600,
+                    ),
                   ),
                 ],
               ),
@@ -408,26 +459,33 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                         children: [
                           CircleAvatar(
                             radius: 36,
-                            backgroundImage: (c != null && c.avatarUrl.isNotEmpty)
+                            backgroundImage: (!isHostMode && c != null && c.avatarUrl.isNotEmpty)
                                 ? NetworkImage(c.avatarUrl)
                                 : null,
-                            onBackgroundImageError: (c != null && c.avatarUrl.isNotEmpty)
+                            onBackgroundImageError: (!isHostMode && c != null && c.avatarUrl.isNotEmpty)
                                 ? (_, __) {}
                                 : null,
-                            child: (c == null || c.avatarUrl.isEmpty)
-                                ? const Icon(Icons.person, size: 36)
+                            child: (isHostMode || c == null || c.avatarUrl.isEmpty)
+                                ? Text(
+                                    partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
+                                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                                  )
                                 : null,
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Say hello to ${c?.name ?? "your companion"}! 👋',
+                            isHostMode
+                                ? 'Welcome $partnerName! 👋'
+                                : 'Say hello to $partnerName! 👋',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Meetups are strictly platonic. Plan your activities and choose verified public venues.',
+                          Text(
+                            isHostMode
+                                ? 'Coordinate booking meetup details and answer client questions.'
+                                : 'Meetups are strictly platonic. Plan your activities and choose verified public venues.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
                       ),

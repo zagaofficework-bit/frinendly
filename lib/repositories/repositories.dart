@@ -394,7 +394,7 @@ class SupabaseBookingRepository implements BookingRepository {
 
 abstract class ChatRepository {
   Future<List<ChatMessage>> fetchMessages(String companionId, {String? userId});
-  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId});
+  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId, String? receiverId});
   Stream<ChatMessage> messageStream(String companionId);
 }
 
@@ -434,7 +434,7 @@ class MockChatRepository implements ChatRepository {
   }
 
   @override
-  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId}) async {
+  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId, String? receiverId}) async {
     _initThreadIfEmpty(companionId);
     _threads[companionId]!.add(message);
     _streamController.add(MapEntry(companionId, message));
@@ -506,9 +506,9 @@ class SupabaseChatRepository implements ChatRepository {
   }
 
   @override
-  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId}) async {
+  Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId, String? receiverId}) async {
     if (!_isUuid(companionId)) {
-      return _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
+      return _fallback.sendMessage(message, companionId: companionId, senderId: senderId, receiverId: receiverId);
     }
     try {
       final currentUserId = senderId ?? client.auth.currentUser?.id;
@@ -521,25 +521,30 @@ class SupabaseChatRepository implements ChatRepository {
       if (currentUserId != null && _isUuid(currentUserId)) {
         data['sender_id'] = currentUserId;
       }
+      if (receiverId != null && _isUuid(receiverId)) {
+        data['receiver_id'] = receiverId;
+      }
       if (message.payload != null) {
         data['payload'] = message.payload;
       }
       final response = await client.from('chat_messages').insert(data).select().single();
       
       // Also cache in fallback for offline resilience
-      await _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
+      await _fallback.sendMessage(message, companionId: companionId, senderId: senderId, receiverId: receiverId);
 
       return ChatMessage(
         id: response['id']?.toString() ?? message.id,
         text: message.text,
         mine: true,
+        senderId: currentUserId,
+        receiverId: receiverId,
         type: message.type,
         time: message.time,
         payload: message.payload,
       );
     } catch (e, st) {
       debugPrint('⚠️ Supabase sendMessage error: $e\n$st');
-      return _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
+      return _fallback.sendMessage(message, companionId: companionId, senderId: senderId, receiverId: receiverId);
     }
   }
 

@@ -5,6 +5,8 @@ enum MessageType { text, voice, location }
 class ChatMessage {
   final String id, text;
   final bool mine;
+  final String? senderId;
+  final String? receiverId;
   final MessageType type;
   final DateTime time;
   final Map<String, dynamic>? payload;
@@ -14,6 +16,8 @@ class ChatMessage {
     required this.id,
     required this.text,
     required this.mine,
+    this.senderId,
+    this.receiverId,
     this.type = MessageType.text,
     required this.time,
     this.payload,
@@ -22,10 +26,13 @@ class ChatMessage {
 
   factory ChatMessage.fromMap(Map<String, dynamic> map, String currentUserId) {
     final senderId = map['sender_id']?.toString() ?? '';
+    final receiverId = map['receiver_id']?.toString();
     final typeStr = map['type']?.toString() ?? 'text';
     return ChatMessage(
       id: map['id']?.toString() ?? '',
       text: map['text']?.toString() ?? '',
+      senderId: senderId,
+      receiverId: receiverId,
       mine: senderId.isNotEmpty && senderId == currentUserId,
       type: switch (typeStr) {
         'voice' => MessageType.voice,

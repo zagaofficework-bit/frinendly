@@ -7,6 +7,7 @@ import '../providers/booking_provider.dart';
 import '../providers/companion_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/widgets.dart';
+import 'chat_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -647,6 +648,24 @@ class _HostDashboard extends ConsumerWidget {
           ),
           child: Column(
             children: [
+              ListTile(
+                leading: const Icon(Icons.forum_outlined, color: Colors.green),
+                title: const Text('Client Messages & Inquiries'),
+                subtitle: const Text('Chat and coordinate with your clients'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChatRoomScreen(
+                        companionId: companion.id,
+                        clientName: 'Client Inquiries',
+                        clientId: 'client_inquiry',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.preview_outlined, color: Colors.blue),
                 title: const Text('View Public Profile'),
