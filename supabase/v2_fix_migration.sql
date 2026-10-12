@@ -6,9 +6,11 @@
 
 -- 1. FIX CHAT_MESSAGES FOREIGN KEY CONSTRAINT
 -- Seeded companions exist in public.companions, not profiles.
--- receiver_id must be nullable so messages to companions do not violate foreign keys.
+-- receiver_id and sender_id can be nullable so messages to/from companions or guests do not violate foreign keys.
 ALTER TABLE public.chat_messages 
     ALTER COLUMN receiver_id DROP NOT NULL;
+ALTER TABLE public.chat_messages 
+    ALTER COLUMN sender_id DROP NOT NULL;
 
 -- 2. REVISE CHAT_MESSAGES RLS POLICIES
 DROP POLICY IF EXISTS "Users can view their own messages" ON public.chat_messages;
