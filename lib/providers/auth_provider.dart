@@ -121,7 +121,7 @@ class AuthNotifier extends Notifier<AuthState> {
         email: email,
         displayName: email.split('@').first,
         createdAt: DateTime.now(),
-        walletBalance: 248.50,
+        walletBalance: 0.0,
       );
       state = state.copyWith(isLoading: false, user: mockUser, isGuest: false);
       return true;

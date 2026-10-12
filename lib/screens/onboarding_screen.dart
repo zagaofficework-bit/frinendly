@@ -19,6 +19,8 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
   int step = 0;
   double rate = 25;
   final bio = TextEditingController();
+  final cityController = TextEditingController(text: 'Mumbai');
+  final ageController = TextEditingController(text: '24');
   final activities = <String>{'Coffee', 'Sightseeing'};
   bool idUploaded = false, selfieDone = false, payoutLinked = false;
   final days = <String>{'Sat', 'Sun'};
@@ -27,6 +29,8 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
   @override
   void dispose() {
     bio.dispose();
+    cityController.dispose();
+    ageController.dispose();
     super.dispose();
   }
 
@@ -159,13 +163,14 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
               final newCompanion = Companion(
                 id: 'c_${DateTime.now().millisecondsSinceEpoch}',
                 name: auth.user!.displayName,
-                age: 24,
-                city: 'Mumbai',
+                age: int.tryParse(ageController.text.trim()) ?? 21,
+                city: cityController.text.trim().isNotEmpty ? cityController.text.trim() : 'Mumbai',
                 bio: bio.text.trim().isNotEmpty
                     ? bio.text.trim()
                     : 'Friendly platonic companion ready to explore coffee spots, art exhibits and city sights!',
-                avatarUrl: auth.user!.avatarUrl ??
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+                avatarUrl: auth.user!.avatarUrl?.isNotEmpty == true
+                    ? auth.user!.avatarUrl!
+                    : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
                 hourlyRate: rate,
                 rating: 5.0,
                 reviewCount: 0,
@@ -205,6 +210,34 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
               content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: cityController,
+                          decoration: const InputDecoration(
+                            labelText: 'City',
+                            hintText: 'e.g. Mumbai, Pune',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 90,
+                        child: TextField(
+                          controller: ageController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Age',
+                            hintText: '18+',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: bio,
                     maxLines: 3,

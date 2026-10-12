@@ -62,7 +62,7 @@ class WalletNotifier extends Notifier<double> {
   @override
   double build() {
     _loadFromProfile();
-    return 248.50;
+    return 0.0;
   }
 
   void _loadFromProfile() {
@@ -111,7 +111,7 @@ class ContactsNotifier extends Notifier<List<String>> {
   @override
   List<String> build() {
     _loadFromDb();
-    return ['Mom  •  +91 90000 00001'];
+    return [];
   }
 
   Future<void> _loadFromDb() async {

@@ -42,7 +42,7 @@ Future<void> showSosSheet(BuildContext context, [WidgetRef? ref]) async {
       contacts = ProviderScope.containerOf(context, listen: false).read(contactsProvider);
     }
   } catch (_) {
-    contacts = ['Mom  •  +91 90000 00001'];
+    contacts = [];
   }
 
   return showModalBottomSheet(

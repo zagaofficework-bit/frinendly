@@ -234,7 +234,7 @@ class SupabaseCompanionRepository implements CompanionRepository {
       if (minRate != null && minRate > 0) {
         builder = builder.gte('hourly_rate', minRate);
       }
-      if (maxRate != null && maxRate < 200) {
+      if (maxRate != null && maxRate > 0) {
         builder = builder.lte('hourly_rate', maxRate);
       }
       if (minRating != null && minRating > 0) {
@@ -358,7 +358,19 @@ class SupabaseBookingRepository implements BookingRepository {
         final companionData = row['companions'];
         final companion = companionData != null
             ? Companion.fromMap(companionData as Map<String, dynamic>)
-            : (await _companionRepo.byId(row['companion_id'].toString())) ?? MockCompanionRepository._data.first;
+            : (await _companionRepo.byId(row['companion_id'].toString())) ??
+                Companion(
+                  id: row['companion_id']?.toString() ?? '',
+                  name: 'Companion',
+                  age: 21,
+                  city: 'City',
+                  bio: 'Platonic companion',
+                  avatarUrl: '',
+                  hourlyRate: (row['subtotal'] as num?)?.toDouble() ?? 25.0,
+                  rating: 5.0,
+                  reviewCount: 0,
+                  distanceKm: 1.0,
+                );
         list.add(Booking.fromMap(row as Map<String, dynamic>, companion));
       }
       return list;

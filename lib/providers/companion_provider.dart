@@ -62,11 +62,15 @@ final reviewsProvider = FutureProvider.family<List<Review>, String>((ref, id) =>
 
 final threadsProvider = Provider<List<ChatThread>>((ref) {
   final list = ref.watch(allCompanionsProvider).valueOrNull ?? [];
-  const statuses = ['Confirmed', 'Pending', 'Completed'];
   return [
-    for (var i = 0; i < list.length && i < 5; i++)
-      ChatThread(companion: list[i], online: i.isEven, unread: i == 1 ? 3 : (i == 3 ? 1 : 0),
-          bookingStatus: statuses[i % 3], lastMessage: 'See you at the cafe, looking forward to it!')
+    for (final c in list)
+      ChatThread(
+        companion: c,
+        online: c.isActive,
+        unread: 0,
+        bookingStatus: c.isActive ? 'Available' : 'Paused',
+        lastMessage: 'Tap to message ${c.name}',
+      ),
   ];
 });
 
