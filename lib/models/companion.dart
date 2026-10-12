@@ -2,13 +2,13 @@ class Companion {
   final String id, name, bio, avatarUrl, city;
   final int age, reviewCount;
   final double hourlyRate, rating, distanceKm;
-  final bool verified, backgroundChecked;
+  final bool verified, backgroundChecked, isActive;
   final List<String> gallery, languages, tags, activities, badges;
   const Companion({
     required this.id, required this.name, required this.age, required this.bio,
     required this.avatarUrl, required this.city, required this.hourlyRate,
     required this.rating, required this.reviewCount, required this.distanceKm,
-    this.verified = true, this.backgroundChecked = true,
+    this.verified = true, this.backgroundChecked = true, this.isActive = true,
     this.gallery = const [], this.languages = const [], this.tags = const [],
     this.activities = const [], this.badges = const [],
   });
@@ -27,6 +27,7 @@ class Companion {
       distanceKm: (map['distance_km'] as num?)?.toDouble() ?? 1.0,
       verified: map['verified'] as bool? ?? false,
       backgroundChecked: map['background_checked'] as bool? ?? false,
+      isActive: map['is_active'] as bool? ?? true,
       gallery: (map['gallery'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       languages: (map['languages'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
@@ -48,6 +49,7 @@ class Companion {
     'distance_km': distanceKm,
     'verified': verified,
     'background_checked': backgroundChecked,
+    'is_active': isActive,
     'languages': languages,
     'tags': tags,
     'activities': activities,
@@ -67,6 +69,7 @@ class Companion {
     double? distanceKm,
     bool? verified,
     bool? backgroundChecked,
+    bool? isActive,
     List<String>? gallery,
     List<String>? languages,
     List<String>? tags,
@@ -86,6 +89,7 @@ class Companion {
         distanceKm: distanceKm ?? this.distanceKm,
         verified: verified ?? this.verified,
         backgroundChecked: backgroundChecked ?? this.backgroundChecked,
+        isActive: isActive ?? this.isActive,
         gallery: gallery ?? this.gallery,
         languages: languages ?? this.languages,
         tags: tags ?? this.tags,

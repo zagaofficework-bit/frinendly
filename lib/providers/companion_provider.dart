@@ -4,6 +4,7 @@ import '../models/review.dart';
 import '../models/chat_message.dart';
 import '../core/supabase_config.dart';
 import '../repositories/repositories.dart';
+import 'auth_provider.dart';
 
 final companionRepositoryProvider = Provider<CompanionRepository>((_) {
   final client = SupabaseConfig.client;
@@ -84,5 +85,39 @@ Future<Companion?> registerCompanion(dynamic ref, Companion companion, {String? 
   final repo = ref.read(companionRepositoryProvider) as CompanionRepository;
   final created = await repo.createOrUpdateCompanion(companion, userId: userId);
   ref.invalidate(allCompanionsProvider);
+  ref.invalidate(myCompanionProfileProvider);
   return created;
 }
+
+final myCompanionProfileProvider = FutureProvider<Companion?>((ref) async {
+  final auth = ref.watch(authProvider);
+  if (!auth.isAuthenticated || auth.user == null) return null;
+  final client = SupabaseConfig.client;
+  if (SupabaseConfig.isConfigured && client != null) {
+    try {
+      final res = await client
+          .from('companions')
+          .select()
+          .eq('user_id', auth.user!.id)
+          .maybeSingle();
+      if (res != null) {
+        return Companion.fromMap(res);
+      }
+    } catch (_) {}
+  }
+  return null;
+});
+
+Future<bool> updateCompanionAvailability(dynamic ref, String companionId, bool isActive) async {
+  final client = SupabaseConfig.client;
+  if (client != null) {
+    try {
+      await client.from('companions').update({'is_active': isActive}).eq('id', companionId);
+      ref.invalidate(myCompanionProfileProvider);
+      ref.invalidate(allCompanionsProvider);
+      return true;
+    } catch (_) {}
+  }
+  return false;
+}
+
