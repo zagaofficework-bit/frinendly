@@ -66,11 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) => GoRouter(
         GoRoute(
           path: '/chat/:id',
           parentNavigatorKey: _rootKey,
-          builder: (_, s) => ChatRoomScreen(
-            companionId: s.pathParameters['id']!,
-            clientId: s.uri.queryParameters['clientId'],
-            clientName: s.uri.queryParameters['clientName'],
-          ),
+          builder: (_, s) => ChatRoomScreen(companionId: s.pathParameters['id']!),
         ),
         GoRoute(path: '/auth', parentNavigatorKey: _rootKey,
             builder: (_, __) => const AuthScreen()),

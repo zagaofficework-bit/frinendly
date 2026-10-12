@@ -78,21 +78,19 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<List<ChatMessage>, 
     String text, {
     MessageType type = MessageType.text,
     Map<String, dynamic>? payload,
-    String? receiverId,
   }) async {
     final companionId = arg;
     final repo = ref.read(chatRepositoryProvider);
     final auth = ref.read(authProvider);
     final myCompanion = ref.read(myCompanionProfileProvider).valueOrNull;
 
-    if (receiverId == null &&
-        ((myCompanion != null && myCompanion.id == companionId) ||
-         (auth.user != null && auth.user!.id == companionId))) {
+    if ((myCompanion != null && myCompanion.id == companionId) ||
+        (auth.user != null && auth.user!.id == companionId)) {
       throw Exception('You cannot send messages to your own host profile');
     }
 
     final targetCompanion = ref.read(allCompanionsProvider).valueOrNull?.where((c) => c.id == companionId).firstOrNull;
-    final targetReceiver = receiverId ?? targetCompanion?.userId;
+    final targetReceiver = targetCompanion?.userId;
 
     final newMsg = ChatMessage(
       id: 'msg_${DateTime.now().millisecondsSinceEpoch}',

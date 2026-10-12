@@ -20,7 +20,6 @@ class ChatInboxScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = ref.watch(threadsProvider);
-    final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
@@ -33,38 +32,12 @@ class ChatInboxScreen extends ConsumerWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            if (myCompanion != null)
-              Card(
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                color: Colors.teal.shade50,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.teal,
-                    child: Icon(Icons.record_voice_over, color: Colors.white, size: 20),
-                  ),
-                  title: Text('${myCompanion.name} (Host Inbox)',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('View and reply to client inquiries & bookings'),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.teal),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatRoomScreen(
-                        companionId: myCompanion.id,
-                        clientName: 'Client Inquiries',
-                        clientId: 'client_inquiries',
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (threads.isEmpty && myCompanion == null) ...[
+            if (threads.isEmpty) ...[
               const SizedBox(height: 120),
               const Center(child: Text('No conversations yet')),
             ] else
               for (var i = 0; i < threads.length; i++) ...[
-                if (i > 0 || myCompanion != null) const Divider(height: 1),
+                if (i > 0) const Divider(height: 1),
                 _buildThreadTile(context, threads[i]),
               ],
           ],
@@ -164,13 +137,9 @@ class ChatInboxScreen extends ConsumerWidget {
 
 class ChatRoomScreen extends ConsumerStatefulWidget {
   final String companionId;
-  final String? clientName;
-  final String? clientId;
   const ChatRoomScreen({
     super.key,
     required this.companionId,
-    this.clientName,
-    this.clientId,
   });
 
   @override
@@ -206,10 +175,7 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     if (text.isEmpty) return;
     controller.clear();
     try {
-      await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
-        text,
-        receiverId: widget.clientId,
-      );
+      await ref.read(chatMessagesProvider(widget.companionId).notifier).send(text);
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
@@ -227,7 +193,6 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
       '📍 Meetup spot: $name',
       type: MessageType.location,
-      receiverId: widget.clientId,
       payload: {
         'location_name': name,
         'latitude': lat,
@@ -241,7 +206,6 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
       'Voice note (0:${durationSeconds.toString().padLeft(2, '0')})',
       type: MessageType.voice,
-      receiverId: widget.clientId,
       payload: {
         'duration_seconds': durationSeconds,
       },
@@ -347,10 +311,8 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     final auth = ref.watch(authProvider);
     final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
 
-    final isHostMode = widget.clientId != null;
-    final isSelf = !isHostMode &&
-        ((auth.user != null && c?.userId != null && c!.userId == auth.user!.id) ||
-        (myCompanion != null && myCompanion.id == widget.companionId));
+    final isSelf = (auth.user != null && c?.userId != null && c!.userId == auth.user!.id) ||
+        (myCompanion != null && myCompanion.id == widget.companionId);
 
     if (isSelf) {
       return Scaffold(
@@ -378,7 +340,7 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'You cannot chat with yourself. When clients inquire or book your companionship, their incoming messages will appear in your inbox.',
+                  'You cannot chat with yourself.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey, height: 1.4),
                 ),
@@ -402,8 +364,7 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
       }
     });
 
-    final partnerName = isHostMode ? (widget.clientName ?? 'Client Inquiry') : (c?.name ?? 'Companion');
-    final partnerSubtitle = isHostMode ? 'Client • Booking Inquirer' : 'Online • Platonic Match';
+    final partnerName = c?.name ?? 'Companion';
 
     return Scaffold(
       appBar: AppBar(
@@ -411,10 +372,10 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundImage: (!isHostMode && c != null && c.avatarUrl.isNotEmpty) ? NetworkImage(c.avatarUrl) : null,
-              onBackgroundImageError: (!isHostMode && c != null && c.avatarUrl.isNotEmpty) ? (_, __) {} : null,
-              child: (isHostMode || c == null || c.avatarUrl.isEmpty)
-                  ? Text(partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U')
+              backgroundImage: (c != null && c.avatarUrl.isNotEmpty) ? NetworkImage(c.avatarUrl) : null,
+              onBackgroundImageError: (c != null && c.avatarUrl.isNotEmpty) ? (_, __) {} : null,
+              child: (c == null || c.avatarUrl.isEmpty)
+                  ? Text(partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'C')
                   : null,
             ),
             const SizedBox(width: 10),
@@ -425,10 +386,10 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                 children: [
                   Text(partnerName, style: const TextStyle(fontSize: 16)),
                   Text(
-                    partnerSubtitle,
+                    'Online • Platonic Match',
                     style: TextStyle(
                       fontSize: 11,
-                      color: isHostMode ? Colors.blue.shade600 : Colors.green.shade600,
+                      color: Colors.green.shade600,
                     ),
                   ),
                 ],
@@ -459,33 +420,29 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                         children: [
                           CircleAvatar(
                             radius: 36,
-                            backgroundImage: (!isHostMode && c != null && c.avatarUrl.isNotEmpty)
+                            backgroundImage: (c != null && c.avatarUrl.isNotEmpty)
                                 ? NetworkImage(c.avatarUrl)
                                 : null,
-                            onBackgroundImageError: (!isHostMode && c != null && c.avatarUrl.isNotEmpty)
+                            onBackgroundImageError: (c != null && c.avatarUrl.isNotEmpty)
                                 ? (_, __) {}
                                 : null,
-                            child: (isHostMode || c == null || c.avatarUrl.isEmpty)
+                            child: (c == null || c.avatarUrl.isEmpty)
                                 ? Text(
-                                    partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'U',
+                                    partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'C',
                                     style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                                   )
                                 : null,
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            isHostMode
-                                ? 'Welcome $partnerName! 👋'
-                                : 'Say hello to $partnerName! 👋',
+                            'Say hello to $partnerName! 👋',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            isHostMode
-                                ? 'Coordinate booking meetup details and answer client questions.'
-                                : 'Meetups are strictly platonic. Plan your activities and choose verified public venues.',
+                          const Text(
+                            'Meetups are strictly platonic. Plan your activities and choose verified public venues.',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
                       ),
