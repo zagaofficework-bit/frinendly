@@ -20,33 +20,68 @@ Future<void> _showAddReviewDialog(BuildContext context, WidgetRef ref, Companion
     );
     return;
   }
-  double rating = 5.0;
-  final commentCtrl = TextEditingController();
   await showDialog(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setDialogState) => AlertDialog(
-        title: Text('Review ${c.name}'),
-        content: Column(
+    builder: (ctx) => _AddReviewDialog(companion: c),
+  );
+}
+
+class _AddReviewDialog extends ConsumerStatefulWidget {
+  final Companion companion;
+  const _AddReviewDialog({required this.companion});
+
+  @override
+  ConsumerState<_AddReviewDialog> createState() => _AddReviewDialogState();
+}
+
+class _AddReviewDialogState extends ConsumerState<_AddReviewDialog> {
+  double _rating = 5.0;
+  late final TextEditingController _commentCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
+
+    return AlertDialog(
+      title: Text('Review ${widget.companion.name}'),
+      content: SingleChildScrollView(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Rating:'),
+            const SizedBox(height: 4),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 for (var i = 1; i <= 5; i++)
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     icon: Icon(
-                      i <= rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      i <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
                       color: Colors.amber,
+                      size: 30,
                     ),
-                    onPressed: () => setDialogState(() => rating = i.toDouble()),
+                    onPressed: () => setState(() => _rating = i.toDouble()),
                   ),
               ],
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: commentCtrl,
+              controller: _commentCtrl,
               maxLines: 3,
               decoration: const InputDecoration(
                 labelText: 'Your Experience',
@@ -56,33 +91,35 @@ Future<void> _showAddReviewDialog(BuildContext context, WidgetRef ref, Companion
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final text = commentCtrl.text.trim();
-              if (text.isEmpty) return;
-              Navigator.pop(ctx);
-              final newReview = Review(
-                author: auth.user?.displayName ?? 'Anonymous Member',
-                text: text,
-                rating: rating,
-                date: DateTime.now(),
-              );
-              await submitReview(ref, c.id, newReview);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Thank you! Your review has been submitted.')),
-                );
-              }
-            },
-            child: const Text('Submit'),
-          ),
-        ],
       ),
-    ),
-  );
-  commentCtrl.dispose();
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final text = _commentCtrl.text.trim();
+            if (text.isEmpty) return;
+            Navigator.pop(context);
+            final newReview = Review(
+              author: auth.user?.displayName ?? 'Anonymous Member',
+              text: text,
+              rating: _rating,
+              date: DateTime.now(),
+            );
+            await submitReview(ref, widget.companion.id, newReview);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Thank you! Your review has been submitted.')),
+              );
+            }
+          },
+          child: const Text('Submit'),
+        ),
+      ],
+    );
+  }
 }
 
 class ProfileDetailsScreen extends ConsumerWidget {
