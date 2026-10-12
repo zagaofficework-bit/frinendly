@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../models/booking.dart';
 import '../models/companion.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/companion_provider.dart';
 import '../widgets/widgets.dart';
 
@@ -58,22 +60,48 @@ class _BookingModalState extends ConsumerState<BookingModal> {
     final ok = await ref.read(paymentServiceProvider).checkout(Pricing.total(widget.companion.hourlyRate, hours));
     if (!ok) { if (mounted) setState(() => paying = false); return; }
 
+    final newBooking = Booking(
+      id: 'b_${DateTime.now().millisecondsSinceEpoch}',
+      companion: widget.companion,
+      start: DateTime(date.year, date.month, date.day, time.hour, time.minute),
+      hours: hours,
+      activity: activity,
+      location: location.text.trim().isNotEmpty ? location.text.trim() : 'Public Venue',
+      status: BookingStatus.confirmed,
+    );
+
     await ref.read(bookingsProvider.notifier).add(
-      Booking(
-        id: 'b_${DateTime.now().millisecondsSinceEpoch}',
-        companion: widget.companion,
-        start: DateTime(date.year, date.month, date.day, time.hour, time.minute),
-        hours: hours,
-        activity: activity,
-        location: location.text.trim().isNotEmpty ? location.text.trim() : 'Public Venue',
-        status: BookingStatus.confirmed,
-      ),
+      newBooking,
       clientId: auth.user?.id,
     );
+
+    // Send automated booking event into the companion's chat thread
+    final formattedTime = DateFormat('EEE, MMM d · h:mm a').format(newBooking.start);
+    final bookingMsgText = '📅 Booking Confirmed!\nActivity: $activity\nWhen: $formattedTime ($hours hrs)\nLocation: ${newBooking.location}\nEscrow: \$${newBooking.total.toStringAsFixed(2)} secured';
+
+    try {
+      await ref.read(chatMessagesProvider(widget.companion.id).notifier).send(
+        bookingMsgText,
+        payload: {
+          'booking_id': newBooking.id,
+          'type': 'booking_confirmation',
+          'activity': activity,
+          'hours': hours,
+          'location': newBooking.location,
+          'start_time': newBooking.start.toIso8601String(),
+        },
+      );
+    } catch (_) {}
+
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    messenger.showSnackBar(
+
+    // Seamlessly transition client into chat room to coordinate meetup
+    try {
+      context.push('/chat/${widget.companion.id}');
+    } catch (_) {}
+
+    ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         backgroundColor: Colors.green,
         content: Row(
@@ -81,7 +109,7 @@ class _BookingModalState extends ConsumerState<BookingModal> {
             Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: 8),
             Expanded(
-              child: Text('Booking confirmed & payment secured in escrow!'),
+              child: Text('Booking confirmed & payment secured! Coordinate your meetup in chat.'),
             ),
           ],
         ),

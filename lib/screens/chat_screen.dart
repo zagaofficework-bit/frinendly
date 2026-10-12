@@ -645,6 +645,42 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                   ),
                 ],
               ),
+            ] else if (m.payload != null && m.payload!['type'] == 'booking_confirmation') ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isMine
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.event_available, color: Colors.green, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Confirmed Escrow Booking',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: isMine ? textColor : Colors.green.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      m.text.replaceAll('📅 Booking Confirmed!\n', ''),
+                      style: TextStyle(fontSize: 13, height: 1.35, color: textColor),
+                    ),
+                  ],
+                ),
+              ),
             ] else ...[
               Text(
                 m.text,

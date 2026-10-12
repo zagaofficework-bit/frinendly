@@ -171,7 +171,7 @@ class _Body extends ConsumerWidget {
                         text.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
                 const Text('+15% platform fee', style: TextStyle(fontSize: 11)),
               ]),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
               child: isSelf
                   ? OutlinedButton.icon(
@@ -179,15 +179,37 @@ class _Body extends ConsumerWidget {
                       label: const Text('Your Host Profile (Preview)'),
                       onPressed: () => context.go('/host'),
                     )
-                  : FilledButton(
-                      onPressed: () => showBookingModal(context, c),
-                      child: const Text('Book Now'))),
+                  : Row(
+                      children: [
+                        OutlinedButton.icon(
+                          key: const Key('profile_chat_button'),
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          label: const Text('Chat'),
+                          onPressed: () => context.push('/chat/${c.id}'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () => showBookingModal(context, c),
+                            child: const Text('Book Now'),
+                          ),
+                        ),
+                      ],
+                    )),
         ]),
       )),
       body: CustomScrollView(slivers: [
         SliverAppBar(
             expandedHeight: 340,
             pinned: true,
+            actions: [
+              if (!isSelf)
+                IconButton(
+                  tooltip: 'Chat with ${c.name}',
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  onPressed: () => context.push('/chat/${c.id}'),
+                ),
+            ],
             flexibleSpace: FlexibleSpaceBar(background: _Carousel(c: c))),
         SliverPadding(
             padding: const EdgeInsets.all(16),

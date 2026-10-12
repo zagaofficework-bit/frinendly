@@ -312,8 +312,13 @@ class _AccountState extends ConsumerState<AccountScreen> {
                       if (b.isUpcoming) ...[
                         const Divider(height: 16),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                              label: const Text('Chat'),
+                              onPressed: () => context.push('/chat/${b.companion.id}'),
+                            ),
+                            const Spacer(),
                             OutlinedButton.icon(
                               icon: const Icon(Icons.cancel_outlined, size: 16),
                               label: const Text('Cancel'),
@@ -347,7 +352,7 @@ class _AccountState extends ConsumerState<AccountScreen> {
                             FilledButton.icon(
                               icon: const Icon(Icons.check_circle_outline,
                                   size: 16),
-                              label: const Text('Complete Meetup'),
+                              label: const Text('Complete'),
                               onPressed: () async {
                                 await ref
                                     .read(bookingsProvider.notifier)
@@ -371,6 +376,12 @@ class _AccountState extends ConsumerState<AccountScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                              label: const Text('Chat History'),
+                              onPressed: () => context.push('/chat/${b.companion.id}'),
+                            ),
+                            const SizedBox(width: 8),
                             OutlinedButton.icon(
                               key: Key('rate_review_${b.id}'),
                               icon: const Icon(Icons.star_rate_rounded,

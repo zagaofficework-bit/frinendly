@@ -163,8 +163,19 @@ final threadsProvider = Provider<List<ChatThread>>((ref) {
     ));
   }
 
-  // Active threads with messages sorted to top
+  // Active threads with messages or bookings sorted to top
   threads.sort((a, b) {
+    final aHasBooking = bookings.any((bk) => bk.companion.id == a.companion.id);
+    final bHasBooking = bookings.any((bk) => bk.companion.id == b.companion.id);
+    final aHasMsg = latestMap.containsKey(a.companion.id);
+    final bHasMsg = latestMap.containsKey(b.companion.id);
+
+    final aScore = (aHasMsg ? 2 : 0) + (aHasBooking ? 1 : 0);
+    final bScore = (bHasMsg ? 2 : 0) + (bHasBooking ? 1 : 0);
+
+    if (aScore != bScore) {
+      return bScore.compareTo(aScore);
+    }
     if (a.lastMessageTime != null && b.lastMessageTime != null) {
       return b.lastMessageTime!.compareTo(a.lastMessageTime!);
     } else if (a.lastMessageTime != null) {
