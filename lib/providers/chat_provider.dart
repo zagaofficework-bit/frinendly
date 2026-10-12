@@ -82,6 +82,12 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<List<ChatMessage>, 
     final companionId = arg;
     final repo = ref.read(chatRepositoryProvider);
     final auth = ref.read(authProvider);
+    final myCompanion = ref.read(myCompanionProfileProvider).valueOrNull;
+
+    if ((myCompanion != null && myCompanion.id == companionId) ||
+        (auth.user != null && auth.user!.id == companionId)) {
+      throw Exception('You cannot send messages to your own host profile');
+    }
 
     final newMsg = ChatMessage(
       id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
@@ -116,10 +122,17 @@ final threadsProvider = Provider<List<ChatThread>>((ref) {
   final companions = ref.watch(allCompanionsProvider).valueOrNull ?? [];
   final bookings = ref.watch(bookingsProvider);
   final latestMap = ref.watch(latestMessagesProvider);
+  final auth = ref.watch(authProvider);
+  final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
 
   final threads = <ChatThread>[];
 
   for (final c in companions) {
+    // Exclude the user's own companion profile from their inbox
+    final isSelf = (auth.user != null && c.userId != null && c.userId == auth.user!.id) ||
+        (myCompanion != null && myCompanion.id == c.id);
+    if (isSelf) continue;
+
     final matchingBooking = bookings.where((b) => b.companion.id == c.id).firstOrNull;
     final bookingStatus = matchingBooking != null
         ? switch (matchingBooking.status) {

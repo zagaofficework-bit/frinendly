@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../models/chat_message.dart';
 import '../models/companion.dart';
+import '../providers/auth_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/companion_provider.dart';
 import '../widgets/widgets.dart';
@@ -291,6 +292,54 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     final Companion? c = ref.watch(allCompanionsProvider).valueOrNull?.where((e) => e.id == widget.companionId).firstOrNull;
     final messages = ref.watch(chatMessagesProvider(widget.companionId));
     final cs = Theme.of(context).colorScheme;
+    final auth = ref.watch(authProvider);
+    final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
+
+    final isSelf = (auth.user != null && c?.userId != null && c!.userId == auth.user!.id) ||
+        (myCompanion != null && myCompanion.id == widget.companionId);
+
+    if (isSelf) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(c?.name ?? 'Host Profile'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.person_outline, size: 48, color: Colors.orange.shade700),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Your Host Profile',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'You cannot chat with yourself. When clients inquire or book your companionship, their incoming messages will appear in your inbox.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, height: 1.4),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Messages'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     // Auto-scroll when messages count updates
     ref.listen(chatMessagesProvider(widget.companionId), (prev, next) {

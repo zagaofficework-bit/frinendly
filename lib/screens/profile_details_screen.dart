@@ -152,6 +152,11 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final reviews = ref.watch(reviewsProvider(c.id));
+    final auth = ref.watch(authProvider);
+    final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
+    final isSelf = (auth.user != null && c.userId != null && c.userId == auth.user!.id) ||
+        (myCompanion != null && myCompanion.id == c.id);
+
     return Scaffold(
       bottomNavigationBar: SafeArea(
           child: Padding(
@@ -168,9 +173,15 @@ class _Body extends ConsumerWidget {
               ]),
           const SizedBox(width: 20),
           Expanded(
-              child: FilledButton(
-                  onPressed: () => showBookingModal(context, c),
-                  child: const Text('Book Now'))),
+              child: isSelf
+                  ? OutlinedButton.icon(
+                      icon: const Icon(Icons.person),
+                      label: const Text('Your Host Profile (Preview)'),
+                      onPressed: () => context.go('/host'),
+                    )
+                  : FilledButton(
+                      onPressed: () => showBookingModal(context, c),
+                      child: const Text('Book Now'))),
         ]),
       )),
       body: CustomScrollView(slivers: [
@@ -238,11 +249,12 @@ class _Body extends ConsumerWidget {
               const SizedBox(height: 16),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Reviews', style: text.titleMedium),
-                TextButton.icon(
-                  icon: const Icon(Icons.rate_review_outlined, size: 18),
-                  label: const Text('Write Review'),
-                  onPressed: () => _showAddReviewDialog(context, ref, c),
-                ),
+                if (!isSelf)
+                  TextButton.icon(
+                    icon: const Icon(Icons.rate_review_outlined, size: 18),
+                    label: const Text('Write Review'),
+                    onPressed: () => _showAddReviewDialog(context, ref, c),
+                  ),
               ]),
               const SizedBox(height: 8),
               reviews.when(

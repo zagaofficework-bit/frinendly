@@ -5,12 +5,17 @@ import '../models/booking.dart';
 import '../models/companion.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
+import '../providers/companion_provider.dart';
 import '../widgets/widgets.dart';
 
-Future<void> showBookingModal(BuildContext context, Companion c) => showModalBottomSheet(
-      context: context, isScrollControlled: true, showDragHandle: true,
-      builder: (_) => BookingModal(companion: c),
-    );
+Future<void> showBookingModal(BuildContext context, Companion c) {
+  return showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => BookingModal(companion: c),
+  );
+}
 
 class BookingModal extends ConsumerStatefulWidget {
   final Companion companion;
@@ -36,6 +41,19 @@ class _BookingModalState extends ConsumerState<BookingModal> {
 
   Future<void> _pay() async {
     final auth = ref.read(authProvider);
+    final myCompanion = ref.read(myCompanionProfileProvider).valueOrNull;
+    if ((auth.user != null && widget.companion.userId != null && widget.companion.userId == auth.user!.id) ||
+        (myCompanion != null && myCompanion.id == widget.companion.id)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You cannot book your own host profile.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
     setState(() => paying = true);
     final ok = await ref.read(paymentServiceProvider).checkout(Pricing.total(widget.companion.hourlyRate, hours));
     if (!ok) { if (mounted) setState(() => paying = false); return; }

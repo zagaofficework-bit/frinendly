@@ -1,5 +1,6 @@
 class Companion {
   final String id, name, bio, avatarUrl, city;
+  final String? userId;
   final int age, reviewCount;
   final double hourlyRate, rating, distanceKm;
   final bool verified, backgroundChecked, isActive;
@@ -8,6 +9,7 @@ class Companion {
     required this.id, required this.name, required this.age, required this.bio,
     required this.avatarUrl, required this.city, required this.hourlyRate,
     required this.rating, required this.reviewCount, required this.distanceKm,
+    this.userId,
     this.verified = true, this.backgroundChecked = true, this.isActive = true,
     this.gallery = const [], this.languages = const [], this.tags = const [],
     this.activities = const [], this.badges = const [],
@@ -16,6 +18,7 @@ class Companion {
   factory Companion.fromMap(Map<String, dynamic> map) {
     return Companion(
       id: map['id']?.toString() ?? '',
+      userId: map['user_id']?.toString(),
       name: map['name']?.toString() ?? '',
       age: (map['age'] as num?)?.toInt() ?? 18,
       bio: map['bio']?.toString() ?? '',
@@ -37,6 +40,7 @@ class Companion {
   }
 
   Map<String, dynamic> toMap() => {
+    if (userId != null) 'user_id': userId,
     'name': name,
     'age': age,
     'city': city,
@@ -58,6 +62,7 @@ class Companion {
 
   Companion copyWith({
     String? id,
+    String? userId,
     String? name,
     int? age,
     String? bio,
@@ -78,6 +83,7 @@ class Companion {
   }) =>
       Companion(
         id: id ?? this.id,
+        userId: userId ?? this.userId,
         name: name ?? this.name,
         age: age ?? this.age,
         bio: bio ?? this.bio,
