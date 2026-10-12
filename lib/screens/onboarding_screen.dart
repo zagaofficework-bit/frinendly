@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../core/supabase_config.dart';
 import '../models/companion.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
@@ -472,7 +471,21 @@ class _HostDashboard extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 32,
-                    backgroundImage: NetworkImage(companion.avatarUrl),
+                    backgroundImage: companion.avatarUrl.isNotEmpty
+                        ? NetworkImage(companion.avatarUrl)
+                        : null,
+                    onBackgroundImageError: companion.avatarUrl.isNotEmpty
+                        ? (_, __) {}
+                        : null,
+                    child: companion.avatarUrl.isEmpty
+                        ? Text(
+                            companion.name.isNotEmpty
+                                ? companion.name[0].toUpperCase()
+                                : 'H',
+                            style: const TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -711,15 +724,17 @@ class _HostDashboard extends ConsumerWidget {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
-                final client = SupabaseConfig.client;
-                if (client != null) {
-                  try {
-                    await client.from('companions').update({'hourly_rate': tempRate}).eq('id', companion.id);
-                    ref.invalidate(myCompanionProfileProvider);
-                    ref.invalidate(allCompanionsProvider);
-                  } catch (_) {}
-                }
+                final ok = await updateCompanionHourlyRate(ref, companion.id, tempRate);
                 if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok
+                          ? 'Hourly rate updated to \$${tempRate.round()}/hr!'
+                          : 'Failed to update hourly rate.'),
+                    ),
+                  );
+                }
               },
               child: const Text('Save'),
             ),

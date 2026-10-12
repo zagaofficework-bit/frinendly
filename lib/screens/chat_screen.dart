@@ -21,63 +21,114 @@ class ChatInboxScreen extends ConsumerWidget {
     final threads = ref.watch(threadsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
-      body: threads.isEmpty
-          ? const Center(child: Text('No conversations yet'))
-          : ListView.separated(
-              itemCount: threads.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) {
-                final t = threads[i];
-                return ListTile(
-                  onTap: () => context.push('/chat/${t.companion.id}'),
-                  leading: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 26,
-                        backgroundImage: NetworkImage(t.companion.avatarUrl),
-                        onBackgroundImageError: (_, __) {},
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: t.online ? Colors.green : Colors.grey,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.surface,
-                              width: 2,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(allCompanionsProvider);
+          await ref.read(allCompanionsProvider.future);
+        },
+        child: threads.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  Center(child: Text('No conversations yet')),
+                ],
+              )
+            : ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: threads.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final t = threads[i];
+                  return ListTile(
+                    onTap: () => context.push('/chat/${t.companion.id}'),
+                    leading: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundImage: t.companion.avatarUrl.isNotEmpty
+                              ? NetworkImage(t.companion.avatarUrl)
+                              : null,
+                          onBackgroundImageError: t.companion.avatarUrl.isNotEmpty
+                              ? (_, __) {}
+                              : null,
+                          child: t.companion.avatarUrl.isEmpty
+                              ? Text(
+                                  t.companion.name.isNotEmpty
+                                      ? t.companion.name[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: t.online ? Colors.green : Colors.grey,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.surface,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  title: Row(
-                    children: [
-                      Text(t.companion.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _statusColor(t.bookingStatus).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
+                      ],
+                    ),
+                    title: Row(
+                      children: [
+                        Text(t.companion.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _statusColor(t.bookingStatus).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            t.bookingStatus,
+                            style: TextStyle(fontSize: 11, color: _statusColor(t.bookingStatus)),
+                          ),
                         ),
-                        child: Text(
-                          t.bookingStatus,
-                          style: TextStyle(fontSize: 11, color: _statusColor(t.bookingStatus)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Text(t.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: t.unread > 0 ? Badge(label: Text('${t.unread}')) : null,
-                );
-              },
-            ),
+                      ],
+                    ),
+                    subtitle: Text(t.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (t.lastMessageTime != null)
+                          Text(
+                            _formatTime(t.lastMessageTime!),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        if (t.unread > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Badge(label: Text('${t.unread}')),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
     );
+  }
+
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    if (time.year == now.year && time.month == now.month && time.day == now.day) {
+      return DateFormat.jm().format(time);
+    }
+    return DateFormat.MMMd().format(time);
   }
 }
 
@@ -254,9 +305,9 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundImage: c != null ? NetworkImage(c.avatarUrl) : null,
-              onBackgroundImageError: c != null ? (_, __) {} : null,
-              child: c == null ? const Icon(Icons.person, size: 16) : null,
+              backgroundImage: (c != null && c.avatarUrl.isNotEmpty) ? NetworkImage(c.avatarUrl) : null,
+              onBackgroundImageError: (c != null && c.avatarUrl.isNotEmpty) ? (_, __) {} : null,
+              child: (c == null || c.avatarUrl.isEmpty) ? const Icon(Icons.person, size: 16) : null,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -289,8 +340,38 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
           const SafetyBanner(),
           Expanded(
             child: messages.isEmpty
-                ? const Center(
-                    child: Text('Loading conversation...', style: TextStyle(color: Colors.grey)),
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 36,
+                            backgroundImage: (c != null && c.avatarUrl.isNotEmpty)
+                                ? NetworkImage(c.avatarUrl)
+                                : null,
+                            onBackgroundImageError: (c != null && c.avatarUrl.isNotEmpty)
+                                ? (_, __) {}
+                                : null,
+                            child: (c == null || c.avatarUrl.isEmpty)
+                                ? const Icon(Icons.person, size: 36)
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Say hello to ${c?.name ?? "your companion"}! 👋',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Meetups are strictly platonic. Plan your activities and choose verified public venues.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 : ListView.builder(
                     controller: scroll,

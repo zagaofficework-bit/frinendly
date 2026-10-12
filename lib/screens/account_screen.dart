@@ -23,24 +23,10 @@ class _AccountState extends ConsumerState<AccountScreen> {
   bool pushBookings = true, pushMessages = true;
 
   Future<void> _addContact() async {
-    final c = TextEditingController();
     final v = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add emergency contact'),
-        content: TextField(
-            controller: c,
-            decoration: const InputDecoration(hintText: 'Name • phone')),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, c.text.trim()),
-              child: const Text('Add'))
-        ],
-      ),
+      builder: (ctx) => const _AddContactDialog(),
     );
-    c.dispose();
     if (v != null && v.isNotEmpty) ref.read(contactsProvider.notifier).add(v);
   }
 
@@ -256,12 +242,17 @@ class _AccountState extends ConsumerState<AccountScreen> {
                         children: [
                           CircleAvatar(
                             radius: 24,
-                            backgroundImage:
-                                NetworkImage(b.companion.avatarUrl),
-                            onBackgroundImageError: (_, __) {},
-                            child: Text(b.companion.name.isNotEmpty
-                                ? b.companion.name[0]
-                                : 'C'),
+                            backgroundImage: b.companion.avatarUrl.isNotEmpty
+                                ? NetworkImage(b.companion.avatarUrl)
+                                : null,
+                            onBackgroundImageError: b.companion.avatarUrl.isNotEmpty
+                                ? (_, __) {}
+                                : null,
+                            child: b.companion.avatarUrl.isEmpty
+                                ? Text(b.companion.name.isNotEmpty
+                                    ? b.companion.name[0].toUpperCase()
+                                    : 'C')
+                                : null,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -764,6 +755,49 @@ class _MeetupReviewDialogState extends ConsumerState<_MeetupReviewDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AddContactDialog extends StatefulWidget {
+  const _AddContactDialog();
+  @override
+  State<_AddContactDialog> createState() => _AddContactDialogState();
+}
+
+class _AddContactDialogState extends State<_AddContactDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add emergency contact'),
+      content: TextField(
+        controller: _controller,
+        decoration: const InputDecoration(hintText: 'Name • phone'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }

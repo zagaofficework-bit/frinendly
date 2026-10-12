@@ -170,5 +170,30 @@ void main() {
       expect(find.textContaining('Starbucks Coffee, Bandra West'), findsOneWidget);
       expect(find.text('Public Meetup Point'), findsOneWidget);
     });
+
+    testWidgets('ChatInboxScreen renders conversation threads with status badges and refresh indicator', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: ChatInboxScreen(),
+          ),
+        ),
+      );
+      // Wait for allCompanionsProvider Future to resolve
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chat'), findsOneWidget);
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+      expect(find.text('Available'), findsWidgets);
+      expect(find.textContaining('Tap to message'), findsWidgets);
+    });
   });
 }

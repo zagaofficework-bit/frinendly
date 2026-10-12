@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/companion.dart';
 import '../models/review.dart';
-import '../models/chat_message.dart';
 import '../core/supabase_config.dart';
 import '../repositories/repositories.dart';
 import 'auth_provider.dart';
@@ -60,20 +59,6 @@ final companionsProvider = Provider<AsyncValue<List<Companion>>>((ref) {
 final companionByIdProvider = FutureProvider.family<Companion?, String>((ref, id) => ref.watch(companionRepositoryProvider).byId(id));
 final reviewsProvider = FutureProvider.family<List<Review>, String>((ref, id) => ref.watch(companionRepositoryProvider).reviews(id));
 
-final threadsProvider = Provider<List<ChatThread>>((ref) {
-  final list = ref.watch(allCompanionsProvider).valueOrNull ?? [];
-  return [
-    for (final c in list)
-      ChatThread(
-        companion: c,
-        online: c.isActive,
-        unread: 0,
-        bookingStatus: c.isActive ? 'Available' : 'Paused',
-        lastMessage: 'Tap to message ${c.name}',
-      ),
-  ];
-});
-
 Future<bool> submitReview(dynamic ref, String companionId, Review review) async {
   final repo = ref.read(companionRepositoryProvider) as CompanionRepository;
   final ok = await repo.addReview(companionId, review);
@@ -117,6 +102,19 @@ Future<bool> updateCompanionAvailability(dynamic ref, String companionId, bool i
   if (client != null) {
     try {
       await client.from('companions').update({'is_active': isActive}).eq('id', companionId);
+      ref.invalidate(myCompanionProfileProvider);
+      ref.invalidate(allCompanionsProvider);
+      return true;
+    } catch (_) {}
+  }
+  return false;
+}
+
+Future<bool> updateCompanionHourlyRate(dynamic ref, String companionId, double newRate) async {
+  final client = SupabaseConfig.client;
+  if (client != null) {
+    try {
+      await client.from('companions').update({'hourly_rate': newRate}).eq('id', companionId);
       ref.invalidate(myCompanionProfileProvider);
       ref.invalidate(allCompanionsProvider);
       return true;

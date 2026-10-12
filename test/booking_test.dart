@@ -81,5 +81,47 @@ void main() {
       expect(find.text('Canceled'), findsOneWidget);
       expect(find.text('CONFIRMED'), findsWidgets);
     });
+
+    testWidgets('AccountScreen emergency contacts and theme mode switcher function properly', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: AccountScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Emergency contacts section
+      expect(find.text('Emergency contacts'), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+
+      // Tap + button
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add emergency contact'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'Sister • +91 99999 88888');
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // Verify added contact appears
+      expect(find.text('Sister • +91 99999 88888'), findsOneWidget);
+
+      // Verify Theme Settings segmented button
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Light'), findsOneWidget);
+      expect(find.text('Dark'), findsOneWidget);
+      expect(find.text('Auto'), findsOneWidget);
+    });
   });
 }

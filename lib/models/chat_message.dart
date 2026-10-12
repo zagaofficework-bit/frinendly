@@ -33,7 +33,7 @@ class ChatMessage {
         _ => MessageType.text,
       },
       time: map['created_at'] != null
-          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          ? DateTime.tryParse(map['created_at'].toString())?.toLocal() ?? DateTime.now()
           : DateTime.now(),
       payload: map['payload'] as Map<String, dynamic>?,
       isRead: map['is_read'] as bool? ?? false,
@@ -60,5 +60,14 @@ class ChatThread {
   final String lastMessage, bookingStatus;
   final int unread;
   final bool online;
-  const ChatThread({required this.companion, required this.lastMessage, required this.bookingStatus, this.unread = 0, this.online = false});
+  final DateTime? lastMessageTime;
+
+  const ChatThread({
+    required this.companion,
+    required this.lastMessage,
+    required this.bookingStatus,
+    this.unread = 0,
+    this.online = false,
+    this.lastMessageTime,
+  });
 }

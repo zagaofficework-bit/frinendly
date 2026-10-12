@@ -248,37 +248,60 @@ class _Body extends ConsumerWidget {
               reviews.when(
                 loading: () => const LinearProgressIndicator(),
                 error: (e, _) => Text('$e'),
-                data: (list) => Column(children: [
-                  for (var star = 5; star >= 1; star--)
-                    Row(children: [
-                      SizedBox(width: 18, child: Text('$star')),
-                      const Icon(Icons.star_rounded,
-                          size: 14, color: Colors.amber),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: LinearProgressIndicator(
-                              value: list
-                                      .where((r) => r.rating.round() == star)
-                                      .length /
-                                  list.length,
-                              borderRadius: BorderRadius.circular(4))),
-                    ]),
-                  const SizedBox(height: 8),
-                  for (final r in list)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(child: Text(r.author[0])),
-                      title: Row(children: [
-                        Text(r.author),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      alignment: Alignment.center,
+                      child: Column(
+                        children: [
+                          Icon(Icons.rate_review_outlined,
+                              size: 40, color: Colors.grey.shade400),
+                          const SizedBox(height: 8),
+                          Text('No reviews yet',
+                              style: text.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade600)),
+                          const SizedBox(height: 4),
+                          Text('Be the first to review this companion!',
+                              style: text.bodySmall?.copyWith(
+                                  color: Colors.grey.shade500)),
+                        ],
+                      ),
+                    );
+                  }
+                  return Column(children: [
+                    for (var star = 5; star >= 1; star--)
+                      Row(children: [
+                        SizedBox(width: 18, child: Text('$star')),
+                        const Icon(Icons.star_rounded,
+                            size: 14, color: Colors.amber),
                         const SizedBox(width: 8),
-                        RatingStars(
-                            rating: r.rating, size: 12, showValue: false)
+                        Expanded(
+                            child: LinearProgressIndicator(
+                                value: list
+                                        .where((r) => r.rating.round() == star)
+                                        .length /
+                                    list.length,
+                                borderRadius: BorderRadius.circular(4))),
                       ]),
-                      subtitle: Text(
-                          '${r.text}\n${DateFormat.yMMMd().format(r.date)}'),
-                      isThreeLine: true,
-                    ),
-                ]),
+                    const SizedBox(height: 8),
+                    for (final r in list)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(child: Text(r.author.isNotEmpty ? r.author[0] : 'U')),
+                        title: Row(children: [
+                          Text(r.author),
+                          const SizedBox(width: 8),
+                          RatingStars(
+                              rating: r.rating, size: 12, showValue: false)
+                        ]),
+                        subtitle: Text(
+                            '${r.text}\n${DateFormat.yMMMd().format(r.date)}'),
+                        isThreeLine: true,
+                      ),
+                  ]);
+                },
               ),
               const SizedBox(height: 40),
             ]))),
