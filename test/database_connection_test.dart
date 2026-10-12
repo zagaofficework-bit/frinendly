@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:friendify/core/supabase_config.dart';
 import 'package:friendify/models/companion.dart';
+import 'package:friendify/models/chat_message.dart';
 import 'package:friendify/models/review.dart';
 import 'package:friendify/repositories/repositories.dart';
 import 'package:friendify/providers/companion_provider.dart';
@@ -145,6 +146,29 @@ void main() {
         mumbaiFiltered.value!.every((c) => c.city.toLowerCase().contains('mumbai')),
         isTrue,
       );
+    });
+
+    test('8. Test SupabaseChatRepository sendMessage and fetchMessages with live client', () async {
+      final chatRepo = SupabaseChatRepository(client);
+      final companions = await SupabaseCompanionRepository(client).fetchCompanions();
+      expect(companions, isNotEmpty);
+      final targetCompanionId = companions.first.id;
+
+      final testMsg = ChatMessage(
+        id: 'test_${DateTime.now().millisecondsSinceEpoch}',
+        text: 'Live Supabase Test Message',
+        mine: true,
+        time: DateTime.now(),
+      );
+
+      final sent = await chatRepo.sendMessage(
+        testMsg,
+        companionId: targetCompanionId,
+      );
+      expect(sent.text, equals('Live Supabase Test Message'));
+
+      final fetched = await chatRepo.fetchMessages(targetCompanionId);
+      expect(fetched, isNotEmpty);
     });
   });
 }

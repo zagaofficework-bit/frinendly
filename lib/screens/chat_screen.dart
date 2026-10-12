@@ -169,8 +169,19 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     final text = controller.text.trim();
     if (text.isEmpty) return;
     controller.clear();
-    await ref.read(chatMessagesProvider(widget.companionId).notifier).send(text);
-    _scrollToBottom();
+    try {
+      await ref.read(chatMessagesProvider(widget.companionId).notifier).send(text);
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not send message: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _sendLocation(String name, double lat, double lng) async {

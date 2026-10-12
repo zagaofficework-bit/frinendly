@@ -444,7 +444,7 @@ class MockChatRepository implements ChatRepository {
         id: 'reply_${DateTime.now().millisecondsSinceEpoch}',
         text: message.type == MessageType.location
             ? 'Awesome! That meetup spot looks great. See you there! 📍'
-            : 'Sounds great! I will be there right on time.',
+            : 'Sounds great! Looking forward to meeting up. See you soon! 😊',
         mine: false,
         time: DateTime.now(),
       );
@@ -464,14 +464,24 @@ class MockChatRepository implements ChatRepository {
   }
 }
 
-
 class SupabaseChatRepository implements ChatRepository {
   final dynamic client; // SupabaseClient
   final ChatRepository _fallback = MockChatRepository();
   SupabaseChatRepository(this.client);
 
+  bool _isUuid(String? id) {
+    if (id == null) return false;
+    return RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    ).hasMatch(id);
+  }
+
   @override
   Future<List<ChatMessage>> fetchMessages(String companionId, {String? userId}) async {
+    if (!_isUuid(companionId)) {
+      return _fallback.fetchMessages(companionId, userId: userId);
+    }
     try {
       final currentUserId = userId ?? client.auth.currentUser?.id ?? '';
       final response = await client
@@ -484,6 +494,10 @@ class SupabaseChatRepository implements ChatRepository {
           .map((row) => ChatMessage.fromMap(row as Map<String, dynamic>, currentUserId))
           .toList();
 
+      final fallbackMsgs = await _fallback.fetchMessages(companionId, userId: userId);
+      if (list.isEmpty && fallbackMsgs.isNotEmpty) {
+        return fallbackMsgs;
+      }
       return list;
     } catch (e, st) {
       debugPrint('⚠️ Supabase fetchMessages error: $e\n$st');
@@ -493,6 +507,9 @@ class SupabaseChatRepository implements ChatRepository {
 
   @override
   Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId}) async {
+    if (!_isUuid(companionId)) {
+      return _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
+    }
     try {
       final currentUserId = senderId ?? client.auth.currentUser?.id;
       final data = <String, dynamic>{
@@ -501,14 +518,25 @@ class SupabaseChatRepository implements ChatRepository {
         'type': message.type.name,
         'is_read': false,
       };
-      if (currentUserId != null && currentUserId.isNotEmpty) {
+      if (currentUserId != null && _isUuid(currentUserId)) {
         data['sender_id'] = currentUserId;
       }
       if (message.payload != null) {
         data['payload'] = message.payload;
       }
       final response = await client.from('chat_messages').insert(data).select().single();
-      return ChatMessage.fromMap(response as Map<String, dynamic>, currentUserId ?? '');
+      
+      // Also cache in fallback for offline resilience
+      await _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
+
+      return ChatMessage(
+        id: response['id']?.toString() ?? message.id,
+        text: message.text,
+        mine: true,
+        type: message.type,
+        time: message.time,
+        payload: message.payload,
+      );
     } catch (e, st) {
       debugPrint('⚠️ Supabase sendMessage error: $e\n$st');
       return _fallback.sendMessage(message, companionId: companionId, senderId: senderId);
@@ -517,6 +545,9 @@ class SupabaseChatRepository implements ChatRepository {
 
   @override
   Stream<ChatMessage> messageStream(String companionId) {
+    if (!_isUuid(companionId)) {
+      return _fallback.messageStream(companionId);
+    }
     try {
       final currentUserId = client.auth.currentUser?.id ?? '';
       return (client.from('chat_messages') as dynamic)
