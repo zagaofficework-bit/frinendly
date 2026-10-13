@@ -355,7 +355,17 @@ class _CarouselState extends State<_Carousel> {
   int page = 0;
   @override
   Widget build(BuildContext context) {
-    final imgs = [widget.c.avatarUrl, ...widget.c.gallery];
+    final imgs = [widget.c.avatarUrl, ...widget.c.gallery].where((u) => u.trim().isNotEmpty).toList();
+    if (imgs.isEmpty) {
+      return Container(
+        color: Colors.grey.shade300,
+        alignment: Alignment.center,
+        child: Text(
+          widget.c.name.isNotEmpty ? widget.c.name[0].toUpperCase() : '?',
+          style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold, color: Colors.grey),
+        ),
+      );
+    }
     return Stack(fit: StackFit.expand, children: [
       PageView.builder(
         itemCount: imgs.length,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:friendify/models/companion.dart';
+import 'package:friendify/models/user_profile.dart';
+import 'package:friendify/providers/auth_provider.dart';
 import 'package:friendify/providers/companion_provider.dart';
 import 'package:friendify/providers/booking_provider.dart';
 import 'package:friendify/screens/explore_screen.dart';
@@ -139,5 +141,66 @@ void main() {
       final bookings = container.read(bookingsProvider);
       expect(bookings.any((b) => b.companion.id == 'c0'), true);
     });
+
+    test('companionsProvider excludes logged-in host own profile from explore discovery', () async {
+      final container = ProviderContainer(
+        overrides: [
+          authProvider.overrideWith(() => _TestHostAuthNotifier()),
+          allCompanionsProvider.overrideWith((ref) => Future.value([
+            const Companion(
+              id: 'c_host_1',
+              userId: 'user_host_1',
+              name: 'My Host Listing',
+              age: 25,
+              city: 'Mumbai',
+              bio: 'Self profile',
+              avatarUrl: '',
+              hourlyRate: 30,
+              rating: 5,
+              reviewCount: 1,
+              distanceKm: 1,
+            ),
+            const Companion(
+              id: 'c_other_2',
+              userId: 'user_other_2',
+              name: 'Other Companion',
+              age: 24,
+              city: 'Mumbai',
+              bio: 'Discoverable profile',
+              avatarUrl: '',
+              hourlyRate: 25,
+              rating: 4.8,
+              reviewCount: 3,
+              distanceKm: 2,
+            ),
+          ])),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Wait for allCompanionsProvider future to resolve
+      await container.read(allCompanionsProvider.future);
+
+      final result = container.read(companionsProvider);
+      expect(result.hasValue, true);
+      final list = result.value!;
+      expect(list.length, 1);
+      expect(list.any((c) => c.id == 'c_host_1'), false);
+      expect(list.first.id, 'c_other_2');
+    });
   });
+}
+
+class _TestHostAuthNotifier extends AuthNotifier {
+  @override
+  AuthState build() => AuthState(
+        isLoading: false,
+        isGuest: false,
+        user: UserProfile(
+          id: 'user_host_1',
+          email: 'host@test.com',
+          displayName: 'My Host Listing',
+          createdAt: DateTime(2026, 1, 1),
+        ),
+      );
 }

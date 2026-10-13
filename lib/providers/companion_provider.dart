@@ -46,7 +46,15 @@ final allCompanionsProvider = FutureProvider<List<Companion>>((ref) => ref.watch
 
 final companionsProvider = Provider<AsyncValue<List<Companion>>>((ref) {
   final f = ref.watch(filterProvider);
+  final auth = ref.watch(authProvider);
+  final myCompanion = ref.watch(myCompanionProfileProvider).valueOrNull;
+
   return ref.watch(allCompanionsProvider).whenData((list) => list.where((c) {
+        // Logical rule: Host cannot discover, swipe, or book themselves in Explore feed
+        final isSelf = (auth.user != null && c.userId != null && c.userId == auth.user!.id) ||
+            (myCompanion != null && myCompanion.id == c.id);
+        if (isSelf) return false;
+
         final q = f.query.toLowerCase();
         final loc = f.location.toLowerCase();
         return (q.isEmpty || c.name.toLowerCase().contains(q) || c.tags.any((t) => t.toLowerCase().contains(q))) &&

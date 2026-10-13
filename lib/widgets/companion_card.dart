@@ -13,8 +13,17 @@ class CompanionCard extends StatelessWidget {
   Widget _image(BuildContext context) => Stack(fit: StackFit.expand, children: [
         Hero(
           tag: 'avatar-${c.id}',
-          child: Image.network(c.avatarUrl, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300, child: const Icon(Icons.person, size: 48))),
+          child: c.avatarUrl.trim().isNotEmpty
+              ? Image.network(c.avatarUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade300, child: const Icon(Icons.person, size: 48)))
+              : Container(
+                  color: Colors.grey.shade300,
+                  alignment: Alignment.center,
+                  child: Text(
+                    c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.grey),
+                  ),
+                ),
         ),
         Positioned(top: 8, left: 8, child: _pill(Icons.location_on, '${c.distanceKm.toStringAsFixed(1)} km')),
         if (c.verified)
