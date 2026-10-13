@@ -21,9 +21,9 @@ ALTER TABLE public.bookings
 COMMENT ON COLUMN public.bookings.client_name IS 'Display name of the client who booked the session';
 COMMENT ON COLUMN public.bookings.client_avatar IS 'Avatar image URL of the client for host identification';
 
--- 3. ENSURE MESSAGES SUPPORTS MEDIA & IMAGES
+-- 3. ENSURE CHAT_MESSAGES SUPPORTS MEDIA & IMAGES
 -- Message types now supported: 'text', 'voice', 'location', 'image'
-ALTER TABLE public.messages
+ALTER TABLE public.chat_messages
     ADD COLUMN IF NOT EXISTS payload JSONB DEFAULT '{}'::jsonb;
 
 -- 4. PROFILES RLS & UPDATE POLICY FOR USER EDIT PROFILE
@@ -49,7 +49,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
