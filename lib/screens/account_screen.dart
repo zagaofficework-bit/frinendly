@@ -311,77 +311,86 @@ class _AccountState extends ConsumerState<AccountScreen> {
                       ),
                       if (b.isUpcoming) ...[
                         const Divider(height: 16),
-                        Row(
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          runSpacing: 8,
+                          spacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             OutlinedButton.icon(
                               icon: const Icon(Icons.chat_bubble_outline, size: 16),
                               label: const Text('Chat'),
                               onPressed: () => context.push('/chat/${b.companion.id}'),
                             ),
-                            const Spacer(),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.cancel_outlined, size: 16),
-                              label: const Text('Cancel'),
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Cancel Booking'),
-                                    content: Text(
-                                        'Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, false),
-                                          child: const Text('Keep')),
-                                      FilledButton(
-                                          onPressed: () =>
-                                              Navigator.pop(ctx, true),
-                                          child: const Text('Cancel Booking')),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true) {
-                                  await ref
-                                      .read(bookingsProvider.notifier)
-                                      .cancel(b.id);
-                                }
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            FilledButton.icon(
-                              icon: const Icon(Icons.check_circle_outline,
-                                  size: 16),
-                              label: const Text('Complete'),
-                              onPressed: () async {
-                                await ref
-                                    .read(bookingsProvider.notifier)
-                                    .complete(b.id);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
-                                    ),
-                                  );
-                                  _showPostMeetupReviewDialog(b);
-                                }
-                              },
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.cancel_outlined, size: 16),
+                                  label: const Text('Cancel'),
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Cancel Booking'),
+                                        content: Text(
+                                            'Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child: const Text('Keep')),
+                                          FilledButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child: const Text('Cancel Booking')),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      await ref
+                                          .read(bookingsProvider.notifier)
+                                          .cancel(b.id);
+                                    }
+                                  },
+                                ),
+                                FilledButton.icon(
+                                  icon: const Icon(Icons.check_circle_outline,
+                                      size: 16),
+                                  label: const Text('Complete'),
+                                  onPressed: () async {
+                                    await ref
+                                        .read(bookingsProvider.notifier)
+                                        .complete(b.id);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
+                                        ),
+                                      );
+                                      _showPostMeetupReviewDialog(b);
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ],
                       if (b.status == BookingStatus.completed) ...[
                         const Divider(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        Wrap(
+                          alignment: WrapAlignment.end,
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             OutlinedButton.icon(
                               icon: const Icon(Icons.chat_bubble_outline, size: 16),
                               label: const Text('Chat History'),
                               onPressed: () => context.push('/chat/${b.companion.id}'),
                             ),
-                            const SizedBox(width: 8),
                             OutlinedButton.icon(
                               key: Key('rate_review_${b.id}'),
                               icon: const Icon(Icons.star_rate_rounded,
