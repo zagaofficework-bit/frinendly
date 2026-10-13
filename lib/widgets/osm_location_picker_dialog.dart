@@ -335,29 +335,21 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
     });
 
     try {
-      // 1. Check if location services are enabled
-      bool serviceEnabled = false;
-      try {
-        serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      } catch (_) {
-        serviceEnabled = true; // Safe fallback if platform check throws
-      }
-
-      if (!serviceEnabled) {
-        await _showLocationServiceDisabledDialog();
-        return;
-      }
-
-      // 2. Check and request location permission
+      // 1. Check and request location permission first so Android prompts the user
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location permission was denied.'),
-                backgroundColor: Colors.orange,
+              SnackBar(
+                content: const Text('Location permission is needed to relocate to your position.'),
+                action: SnackBarAction(
+                  label: 'Grant',
+                  textColor: Colors.white,
+                  onPressed: _relocateToMyPosition,
+                ),
+                backgroundColor: Colors.orange.shade800,
               ),
             );
           }
@@ -367,6 +359,19 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
 
       if (permission == LocationPermission.deniedForever) {
         await _showPermissionDeniedForeverDialog();
+        return;
+      }
+
+      // 2. Check if device location services (GPS) are enabled
+      bool serviceEnabled = false;
+      try {
+        serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      } catch (_) {
+        serviceEnabled = true; // Safe fallback if platform check throws
+      }
+
+      if (!serviceEnabled) {
+        await _showLocationServiceDisabledDialog();
         return;
       }
 

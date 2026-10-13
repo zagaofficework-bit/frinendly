@@ -369,6 +369,11 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                   double lng = 72.8777;
                   String label = 'Current GPS Location';
                   try {
+                    var perm = await Geolocator.checkPermission();
+                    if (perm == LocationPermission.denied) {
+                      perm = await Geolocator.requestPermission();
+                    }
+
                     bool hasService = false;
                     try {
                       hasService = await Geolocator.isLocationServiceEnabled();
@@ -388,10 +393,6 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                       );
                     }
 
-                    var perm = await Geolocator.checkPermission();
-                    if (perm == LocationPermission.denied) {
-                      perm = await Geolocator.requestPermission();
-                    }
                     if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
                       final pos = await Geolocator.getCurrentPosition(
                         locationSettings: const LocationSettings(
