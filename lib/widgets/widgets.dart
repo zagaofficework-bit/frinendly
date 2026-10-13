@@ -4,3 +4,5 @@ export 'booking_summary.dart';
 export 'companion_card.dart';
 export 'filter_bottom_sheet.dart';
 export 'glass_card.dart';
+export 'osm_location_picker_dialog.dart';
+export 'osm_map_bubble.dart';

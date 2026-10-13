@@ -192,14 +192,60 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Share Safe Meetup Location'), findsOneWidget);
-      expect(find.text('Starbucks Coffee, Bandra West'), findsOneWidget);
-
       // Select Starbucks
       await tester.tap(find.text('Starbucks Coffee, Bandra West'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Starbucks Coffee, Bandra West'), findsOneWidget);
       expect(find.text('Public Meetup Point'), findsOneWidget);
+      expect(find.byKey(const Key('open_in_google_maps_button')), findsOneWidget);
+      expect(find.text('Google Maps'), findsOneWidget);
+    });
+
+    testWidgets('ChatRoomScreen interactive OpenStreetMap picker shares custom pin with coordinates', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: ChatRoomScreen(companionId: 'c1'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open location sheet
+      await tester.tap(find.byKey(const Key('chat_location_button')));
+      await tester.pumpAndSettle();
+
+      // Select OpenStreetMap pin option
+      expect(find.byKey(const Key('osm_pick_map_pin_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('osm_pick_map_pin_button')));
+      await tester.pumpAndSettle();
+
+      // Verify OpenStreetMap dialog elements
+      expect(find.text('Share Meetup Pin'), findsOneWidget);
+      expect(find.byKey(const Key('osm_flutter_map')), findsOneWidget);
+      expect(find.byKey(const Key('osm_location_name_field')), findsOneWidget);
+      expect(find.byKey(const Key('osm_confirm_location_button')), findsOneWidget);
+
+      // Select preset chip
+      expect(find.text('Blue Tokai Roasters'), findsOneWidget);
+      await tester.tap(find.text('Blue Tokai Roasters'));
+      await tester.pumpAndSettle();
+
+      // Confirm pin share
+      await tester.tap(find.byKey(const Key('osm_confirm_location_button')));
+      await tester.pumpAndSettle();
+
+      // Verify bubble rendered with Google Maps button
+      expect(find.textContaining('Blue Tokai Roasters'), findsWidgets);
+      expect(find.text('Google Maps'), findsWidgets);
     });
 
     testWidgets('ChatRoomScreen photo picker shares activity photo', (tester) async {

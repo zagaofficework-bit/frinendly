@@ -297,6 +297,27 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
               ),
               const Divider(height: 20),
               ListTile(
+                key: const Key('osm_pick_map_pin_button'),
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  child: Icon(Icons.map_outlined, color: Theme.of(context).colorScheme.primary),
+                ),
+                title: const Text('Pick on Live OpenStreetMap Pin', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Drag pin & select any custom meeting venue', style: TextStyle(fontSize: 11)),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final res = await showDialog<MeetupLocationResult>(
+                    context: context,
+                    builder: (_) => const OsmLocationPickerDialog(),
+                  );
+                  if (res != null) {
+                    _sendLocation(res.name, res.latitude, res.longitude);
+                  }
+                },
+              ),
+              const Divider(height: 12),
+              ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Color(0xFFE8F5E9),
                   child: Icon(Icons.coffee, color: Colors.green),
@@ -801,46 +822,15 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                 ],
               ),
             ] else if (m.type == MessageType.location) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.location_on, color: isMine ? Colors.amberAccent : Colors.red),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          m.text,
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: (isMine ? Colors.black26 : Colors.black12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.verified_outlined, size: 13, color: textColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Public Meetup Point',
-                          style: TextStyle(fontSize: 10, color: textColor),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              OsmMapBubble(
+                locationName: m.payload?['location_name']?.toString() ??
+                    (m.text.startsWith('📍 Meetup spot: ')
+                        ? m.text.replaceFirst('📍 Meetup spot: ', '')
+                        : m.text),
+                latitude: (m.payload?['latitude'] as num?)?.toDouble() ?? 19.0600,
+                longitude: (m.payload?['longitude'] as num?)?.toDouble() ?? 72.8338,
+                isMine: isMine,
+                textColor: textColor,
               ),
             ] else if (m.payload != null && m.payload!['type'] == 'booking_confirmation') ...[
               Container(
