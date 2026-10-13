@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/companion.dart';
 import '../models/review.dart';
@@ -129,5 +130,24 @@ Future<bool> updateCompanionHourlyRate(dynamic ref, String companionId, double n
     } catch (_) {}
   }
   return false;
+}
+
+Future<bool> updateCompanionProfile(dynamic ref, Companion companion) async {
+  final client = SupabaseConfig.client;
+  if (client != null) {
+    try {
+      await client.from('companions').update(companion.toMap()).eq('id', companion.id);
+      ref.invalidate(myCompanionProfileProvider);
+      ref.invalidate(allCompanionsProvider);
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ Error updating companion profile in Supabase: $e');
+    }
+  }
+  final repo = ref.read(companionRepositoryProvider) as CompanionRepository;
+  await repo.createOrUpdateCompanion(companion);
+  ref.invalidate(myCompanionProfileProvider);
+  ref.invalidate(allCompanionsProvider);
+  return true;
 }
 

@@ -174,6 +174,46 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(find.byType(Slider), findsNothing);
+
+      // Verify Profile Completeness card
+      expect(find.textContaining('Profile Completeness'), findsOneWidget);
+
+      // Verify all detail editor quick action tiles exist
+      expect(find.text('Edit Bio & Location'), findsOneWidget);
+      expect(find.text('Languages Spoken'), findsOneWidget);
+      expect(find.text('Manage Gallery Photos'), findsOneWidget);
+
+      // Test Edit Bio & Location dialog
+      await tester.tap(find.text('Edit Bio & Location'));
+      await tester.pumpAndSettle();
+      expect(find.text('Edit Bio & Details'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Mumbai'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Test Offered Activities dialog
+      await tester.tap(find.text('Offered Activities'));
+      await tester.pumpAndSettle();
+      expect(find.text('Select the platonic activities you are happy to accompany guests to:'), findsOneWidget);
+      expect(find.byType(FilterChip), findsWidgets);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Test Languages Spoken dialog
+      await tester.tap(find.text('Languages Spoken'));
+      await tester.pumpAndSettle();
+      expect(find.text('Select the languages you can comfortably converse in:'), findsOneWidget);
+      expect(find.byType(FilterChip), findsWidgets);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Test Manage Gallery Photos dialog
+      await tester.tap(find.text('Manage Gallery Photos'));
+      await tester.pumpAndSettle();
+      expect(find.text('Manage Photo Gallery'), findsOneWidget);
+      expect(find.text('Add Photo by URL:'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
     });
   });
 }

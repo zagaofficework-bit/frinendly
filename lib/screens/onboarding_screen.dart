@@ -8,6 +8,17 @@ import '../providers/companion_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/widgets.dart';
 
+const kAvailableLanguages = [
+  'English',
+  'Hindi',
+  'Marathi',
+  'Gujarati',
+  'Bengali',
+  'Punjabi',
+  'Spanish',
+  'French',
+];
+
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
   @override
@@ -20,7 +31,9 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
   final bio = TextEditingController();
   final cityController = TextEditingController(text: 'Mumbai');
   final ageController = TextEditingController(text: '24');
+  final avatarController = TextEditingController();
   final activities = <String>{'Coffee', 'Sightseeing'};
+  final languages = <String>{'English', 'Hindi'};
   bool idUploaded = false, selfieDone = false, payoutLinked = false;
   final days = <String>{'Sat', 'Sun'};
   TimeOfDay from = const TimeOfDay(hour: 10, minute: 0), to = const TimeOfDay(hour: 20, minute: 0);
@@ -30,6 +43,7 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
     bio.dispose();
     cityController.dispose();
     ageController.dispose();
+    avatarController.dispose();
     super.dispose();
   }
 
@@ -167,9 +181,11 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
                 bio: bio.text.trim().isNotEmpty
                     ? bio.text.trim()
                     : 'Friendly platonic companion ready to explore coffee spots, art exhibits and city sights!',
-                avatarUrl: auth.user!.avatarUrl?.isNotEmpty == true
-                    ? auth.user!.avatarUrl!
-                    : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+                avatarUrl: avatarController.text.trim().isNotEmpty
+                    ? avatarController.text.trim()
+                    : (auth.user!.avatarUrl?.isNotEmpty == true
+                        ? auth.user!.avatarUrl!
+                        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80'),
                 hourlyRate: rate,
                 rating: 5.0,
                 reviewCount: 0,
@@ -177,7 +193,7 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
                 verified: idUploaded && selfieDone,
                 backgroundChecked: true,
                 isActive: true,
-                languages: const ['English', 'Hindi'],
+                languages: languages.isNotEmpty ? languages.toList() : const ['English', 'Hindi'],
                 tags: activities.isNotEmpty ? activities.toList() : const ['Coffee', 'Foodie'],
                 activities: activities.isNotEmpty ? activities.toList() : const ['Coffee', 'Sightseeing'],
                 badges: const ['New Host', 'Identity Verified'],
@@ -279,6 +295,30 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
                           onSelected: (s) => setState(() => s ? activities.add(a) : activities.remove(a)),
                         ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Languages You Speak:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final l in kAvailableLanguages)
+                        FilterChip(
+                          label: Text(l),
+                          selected: languages.contains(l),
+                          onSelected: (s) => setState(() => s ? languages.add(l) : languages.remove(l)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: avatarController,
+                    decoration: const InputDecoration(
+                      labelText: 'Profile Picture URL (Optional)',
+                      hintText: 'https://images.unsplash.com/...',
+                      prefixIcon: Icon(Icons.link),
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ],
               ),
@@ -638,7 +678,12 @@ class _HostDashboard extends ConsumerWidget {
 
         const SizedBox(height: 16),
 
-        // Quick Actions
+        // Profile Completeness Card
+        _buildCompletenessCard(context, companion),
+
+        const SizedBox(height: 16),
+
+        // Quick Actions & Profile Editor Card
         Card(
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -656,18 +701,63 @@ class _HostDashboard extends ConsumerWidget {
               ),
               const Divider(height: 1),
               ListTile(
-                leading: const Icon(Icons.edit_outlined, color: Colors.purple),
-                title: const Text('Edit Hourly Rate'),
-                subtitle: Text('Current: \$${companion.hourlyRate.toStringAsFixed(0)}/hr'),
+                leading: const Icon(Icons.edit_note_rounded, color: Colors.deepPurple),
+                title: const Text('Edit Bio & Location'),
+                subtitle: Text(
+                  '${companion.age} yrs old • ${companion.bio.isEmpty ? 'No bio set' : (companion.bio.length > 35 ? '${companion.bio.substring(0, 35)}...' : companion.bio)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showEditRateDialog(context, ref, companion),
+                onTap: () => _showEditProfileDialog(context, ref, companion),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.local_activity_outlined, color: Colors.teal),
                 title: const Text('Offered Activities'),
-                subtitle: Text(companion.activities.join(', ')),
+                subtitle: Text(
+                  companion.activities.isEmpty
+                      ? 'Tap to select activities you offer'
+                      : companion.activities.join(', '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showEditActivitiesDialog(context, ref, companion),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.translate_rounded, color: Colors.indigo),
+                title: const Text('Languages Spoken'),
+                subtitle: Text(
+                  companion.languages.isEmpty
+                      ? 'English, Hindi'
+                      : companion.languages.join(', '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showEditLanguagesDialog(context, ref, companion),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: Colors.pink),
+                title: const Text('Manage Gallery Photos'),
+                subtitle: Text(
+                  companion.gallery.isEmpty
+                      ? 'Add photos to enhance your profile'
+                      : '${companion.gallery.length} photos uploaded',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showManageGalleryDialog(context, ref, companion),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined, color: Colors.purple),
+                title: const Text('Edit Hourly Rate'),
+                subtitle: Text('Current: \$${companion.hourlyRate.toStringAsFixed(0)}/hr'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showEditRateDialog(context, ref, companion),
               ),
             ],
           ),
@@ -696,6 +786,545 @@ class _HostDashboard extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompletenessCard(BuildContext context, Companion companion) {
+    int score = 0;
+    final List<String> suggestions = [];
+    if (companion.bio.trim().length >= 15) {
+      score += 20;
+    } else {
+      suggestions.add('Add bio');
+    }
+
+    if (companion.activities.isNotEmpty) {
+      score += 20;
+    } else {
+      suggestions.add('Pick activities');
+    }
+
+    if (companion.languages.isNotEmpty) {
+      score += 20;
+    } else {
+      suggestions.add('Add languages');
+    }
+
+    if (companion.avatarUrl.trim().isNotEmpty) {
+      score += 20;
+    } else {
+      suggestions.add('Profile photo');
+    }
+
+    if (companion.gallery.isNotEmpty) {
+      score += 20;
+    } else {
+      suggestions.add('Add gallery photos');
+    }
+
+    final isAllStar = score == 100;
+
+    return Card(
+      elevation: 0,
+      color: isAllStar
+          ? Colors.green.withValues(alpha: 0.1)
+          : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isAllStar
+              ? Colors.green.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isAllStar ? Icons.verified_rounded : Icons.pie_chart_rounded,
+                      size: 20,
+                      color: isAllStar ? Colors.green : Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isAllStar ? 'All-Star Host Profile' : 'Profile Completeness',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+                Text(
+                  '$score%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isAllStar ? Colors.green : Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: score / 100.0,
+                minHeight: 8,
+                backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                color: isAllStar ? Colors.green : Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (isAllStar)
+              const Text(
+                '✨ Your host profile is 100% complete! Maximum visibility in Explore.',
+                style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w500),
+              )
+            else
+              Text(
+                'Suggestions: ${suggestions.join(" • ")} to reach 100% and get more bookings.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, Companion companion) {
+    final cityCtl = TextEditingController(text: companion.city);
+    final ageCtl = TextEditingController(text: companion.age.toString());
+    final bioCtl = TextEditingController(text: companion.bio);
+    final avatarCtl = TextEditingController(text: companion.avatarUrl);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Bio & Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: cityCtl,
+                      decoration: const InputDecoration(labelText: 'City', border: OutlineInputBorder()),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 75,
+                    child: TextField(
+                      controller: ageCtl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Age', border: OutlineInputBorder()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: bioCtl,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'About Me / Bio',
+                  hintText: 'Share your background, interests, and hobbies...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: avatarCtl,
+                decoration: const InputDecoration(
+                  labelText: 'Avatar Image URL',
+                  hintText: 'https://...',
+                  prefixIcon: Icon(Icons.link),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              final updated = companion.copyWith(
+                city: cityCtl.text.trim().isNotEmpty ? cityCtl.text.trim() : companion.city,
+                age: int.tryParse(ageCtl.text.trim()) ?? companion.age,
+                bio: bioCtl.text.trim(),
+                avatarUrl: avatarCtl.text.trim().isNotEmpty ? avatarCtl.text.trim() : companion.avatarUrl,
+              );
+              final ok = await updateCompanionProfile(ref, updated);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ok ? 'Profile details updated successfully!' : 'Failed to update profile details.'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditActivitiesDialog(BuildContext context, WidgetRef ref, Companion companion) {
+    final selected = Set<String>.from(companion.activities);
+    final customCtl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Offered Activities'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select the platonic activities you are happy to accompany guests to:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    for (final a in kActivities)
+                      FilterChip(
+                        label: Text(a),
+                        selected: selected.contains(a),
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              selected.add(a);
+                            } else {
+                              selected.remove(a);
+                            }
+                          });
+                        },
+                      ),
+                    for (final custom in selected.where((item) => !kActivities.contains(item)))
+                      FilterChip(
+                        label: Text(custom),
+                        selected: true,
+                        onSelected: (_) => setState(() => selected.remove(custom)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: customCtl,
+                        decoration: const InputDecoration(
+                          labelText: 'Add Custom Activity',
+                          hintText: 'e.g. Photography Walk',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        final text = customCtl.text.trim();
+                        if (text.isNotEmpty) {
+                          setState(() => selected.add(text));
+                          customCtl.clear();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final list = selected.toList();
+                final updated = companion.copyWith(
+                  activities: list,
+                  tags: list,
+                );
+                final ok = await updateCompanionProfile(ref, updated);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? 'Activities updated successfully!' : 'Failed to update activities.'),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditLanguagesDialog(BuildContext context, WidgetRef ref, Companion companion) {
+    final selected = Set<String>.from(companion.languages);
+    final customCtl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Languages Spoken'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select the languages you can comfortably converse in:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    for (final l in kAvailableLanguages)
+                      FilterChip(
+                        label: Text(l),
+                        selected: selected.contains(l),
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              selected.add(l);
+                            } else {
+                              selected.remove(l);
+                            }
+                          });
+                        },
+                      ),
+                    for (final custom in selected.where((item) => !kAvailableLanguages.contains(item)))
+                      FilterChip(
+                        label: Text(custom),
+                        selected: true,
+                        onSelected: (_) => setState(() => selected.remove(custom)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: customCtl,
+                        decoration: const InputDecoration(
+                          labelText: 'Other Language',
+                          hintText: 'e.g. German, Tamil',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        final text = customCtl.text.trim();
+                        if (text.isNotEmpty) {
+                          setState(() => selected.add(text));
+                          customCtl.clear();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final updated = companion.copyWith(languages: selected.toList());
+                final ok = await updateCompanionProfile(ref, updated);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? 'Languages updated successfully!' : 'Failed to update languages.'),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showManageGalleryDialog(BuildContext context, WidgetRef ref, Companion companion) {
+    final gallery = List<String>.from(companion.gallery);
+    final urlCtl = TextEditingController();
+
+    const presets = [
+      MapEntry('Coffee Cafe', 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80'),
+      MapEntry('City Tour', 'https://images.unsplash.com/photo-1477959858617-67f30bc75b82?auto=format&fit=crop&w=600&q=80'),
+      MapEntry('Art & Museum', 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=600&q=80'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Manage Photo Gallery'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Photos show guests what it’s like hanging out with you in friendly spaces.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  if (gallery.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text('No gallery photos yet. Add one below!'),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (int i = 0; i < gallery.length; i++)
+                          Stack(
+                            alignment: Alignment.topRight,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  gallery[i],
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 80,
+                                    height: 80,
+                                    color: Colors.grey.shade300,
+                                    child: const Icon(Icons.broken_image, size: 28),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => setState(() => gallery.removeAt(i)),
+                                child: Container(
+                                  margin: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
+                  const Text('Add Photo by URL:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: urlCtl,
+                          decoration: const InputDecoration(
+                            hintText: 'https://images.unsplash.com/...',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        icon: const Icon(Icons.add_photo_alternate),
+                        onPressed: () {
+                          final text = urlCtl.text.trim();
+                          if (text.isNotEmpty) {
+                            setState(() => gallery.add(text));
+                            urlCtl.clear();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Or add curated sample presets:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      for (final p in presets)
+                        ActionChip(
+                          avatar: const Icon(Icons.add, size: 14),
+                          label: Text(p.key, style: const TextStyle(fontSize: 11)),
+                          onPressed: () {
+                            if (!gallery.contains(p.value)) {
+                              setState(() => gallery.add(p.value));
+                            }
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final updated = companion.copyWith(gallery: gallery);
+                final ok = await updateCompanionProfile(ref, updated);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? 'Gallery photos updated!' : 'Failed to update gallery photos.'),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
