@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -367,23 +368,39 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                   double lng = 72.8777;
                   String label = 'Current GPS Location';
                   try {
-                    final hasService = await Geolocator.isLocationServiceEnabled();
-                    if (hasService) {
-                      var perm = await Geolocator.checkPermission();
-                      if (perm == LocationPermission.denied) {
-                        perm = await Geolocator.requestPermission();
-                      }
-                      if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
-                        final pos = await Geolocator.getCurrentPosition(
-                          locationSettings: const LocationSettings(
-                            accuracy: LocationAccuracy.high,
-                            timeLimit: Duration(seconds: 5),
+                    bool hasService = false;
+                    try {
+                      hasService = await Geolocator.isLocationServiceEnabled();
+                    } catch (_) {
+                      hasService = true;
+                    }
+
+                    if (!hasService && !kIsWeb && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Location services are turned off.'),
+                          action: SnackBarAction(
+                            label: 'Settings',
+                            onPressed: () => Geolocator.openLocationSettings(),
                           ),
-                        );
-                        lat = pos.latitude;
-                        lng = pos.longitude;
-                        label = 'Live GPS Location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
-                      }
+                        ),
+                      );
+                    }
+
+                    var perm = await Geolocator.checkPermission();
+                    if (perm == LocationPermission.denied) {
+                      perm = await Geolocator.requestPermission();
+                    }
+                    if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
+                      final pos = await Geolocator.getCurrentPosition(
+                        locationSettings: const LocationSettings(
+                          accuracy: LocationAccuracy.medium,
+                          timeLimit: Duration(seconds: 8),
+                        ),
+                      );
+                      lat = pos.latitude;
+                      lng = pos.longitude;
+                      label = 'Live GPS Location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
                     }
                   } catch (_) {}
                   _sendLocation(label, lat, lng);

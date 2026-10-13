@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -243,6 +244,90 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
     _searchFocusNode.unfocus();
   }
 
+  Future<void> _showLocationServiceDisabledDialog() async {
+    if (!mounted) return;
+    if (!kIsWeb) {
+      final shouldOpen = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.location_off_outlined, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Turn On Location'),
+            ],
+          ),
+          content: const Text(
+            'GPS / Location Services are currently turned off. Please enable device location to automatically find and pin your current spot.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.settings, size: 16),
+              label: const Text('Open Settings'),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldOpen == true) {
+        await Geolocator.openLocationSettings();
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enable location access in your browser to relocate your pin.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showPermissionDeniedForeverDialog() async {
+    if (!mounted) return;
+    if (!kIsWeb) {
+      final shouldOpen = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.lock_person_outlined, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text('Location Permission'),
+            ],
+          ),
+          content: const Text(
+            'Location permission is permanently denied for Friendify. Please enable location permissions in App Settings.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.settings, size: 16),
+              label: const Text('App Settings'),
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldOpen == true) {
+        await Geolocator.openAppSettings();
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Location permission was permanently blocked. Please allow location in browser settings.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   Future<void> _relocateToMyPosition() async {
     setState(() {
       _isLocating = true;
@@ -250,16 +335,15 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
 
     try {
       // 1. Check if location services are enabled
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      bool serviceEnabled = false;
+      try {
+        serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      } catch (_) {
+        serviceEnabled = true; // Safe fallback if platform check throws
+      }
+
       if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location services are turned off. Please enable GPS on your device.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+        await _showLocationServiceDisabledDialog();
         return;
       }
 
@@ -281,14 +365,7 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permissions are permanently denied. Please allow them in device settings.'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
+        await _showPermissionDeniedForeverDialog();
         return;
       }
 
@@ -297,19 +374,23 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
       try {
         pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
+            accuracy: LocationAccuracy.medium,
             timeLimit: Duration(seconds: 10),
           ),
         );
       } catch (_) {
-        pos = await Geolocator.getLastKnownPosition();
+        if (!kIsWeb) {
+          try {
+            pos = await Geolocator.getLastKnownPosition();
+          } catch (_) {}
+        }
       }
 
       if (pos == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Could not obtain current GPS position. Try moving outdoors.'),
+              content: Text('Could not obtain current GPS position. You can drag the pin or search your spot above.'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -334,11 +415,22 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
 
       // 4. Reverse geocode asynchronously via Nominatim
       _reverseGeocode(pos.latitude, pos.longitude);
+    } on LocationServiceDisabledException {
+      await _showLocationServiceDisabledDialog();
+    } on PermissionDeniedException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permission was denied.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to determine location: $e'),
+            content: Text('Location unavailable: $e'),
             backgroundColor: Colors.redAccent,
           ),
         );
