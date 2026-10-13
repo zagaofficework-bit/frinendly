@@ -396,6 +396,7 @@ abstract class ChatRepository {
   Future<List<ChatMessage>> fetchMessages(String companionId, {String? userId});
   Future<ChatMessage> sendMessage(ChatMessage message, {required String companionId, String? senderId, String? receiverId});
   Stream<ChatMessage> messageStream(String companionId);
+  Future<Map<String, ChatMessage>> fetchLatestMessages();
 }
 
 class MockChatRepository implements ChatRepository {
@@ -461,6 +462,17 @@ class MockChatRepository implements ChatRepository {
     return _streamController.stream
         .where((entry) => entry.key == companionId)
         .map((entry) => entry.value);
+  }
+
+  @override
+  Future<Map<String, ChatMessage>> fetchLatestMessages() async {
+    final map = <String, ChatMessage>{};
+    for (final entry in _threads.entries) {
+      if (entry.value.isNotEmpty) {
+        map[entry.key] = entry.value.last;
+      }
+    }
+    return map;
   }
 }
 
@@ -567,6 +579,28 @@ class SupabaseChatRepository implements ChatRepository {
     } catch (e, st) {
       debugPrint('⚠️ Supabase messageStream error: $e\n$st');
       return _fallback.messageStream(companionId);
+    }
+  }
+
+  @override
+  Future<Map<String, ChatMessage>> fetchLatestMessages() async {
+    try {
+      final currentUserId = client.auth.currentUser?.id ?? '';
+      final response = await client
+          .from('chat_messages')
+          .select()
+          .order('created_at', ascending: false);
+      final map = <String, ChatMessage>{};
+      for (final row in response as List) {
+        final cid = row['companion_id']?.toString();
+        if (cid != null && !map.containsKey(cid)) {
+          map[cid] = ChatMessage.fromMap(row as Map<String, dynamic>, currentUserId);
+        }
+      }
+      return map;
+    } catch (e, st) {
+      debugPrint('⚠️ Supabase fetchLatestMessages error: $e\n$st');
+      return _fallback.fetchLatestMessages();
     }
   }
 }

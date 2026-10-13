@@ -18,7 +18,20 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 
 class LatestMessagesNotifier extends Notifier<Map<String, ChatMessage>> {
   @override
-  Map<String, ChatMessage> build() => {};
+  Map<String, ChatMessage> build() {
+    Future.microtask(() => _loadAll());
+    return {};
+  }
+
+  Future<void> _loadAll() async {
+    final repo = ref.read(chatRepositoryProvider);
+    try {
+      final map = await repo.fetchLatestMessages();
+      if (map.isNotEmpty) {
+        state = {...state, ...map};
+      }
+    } catch (_) {}
+  }
 
   void updateLatest(String companionId, ChatMessage msg) {
     final current = state[companionId];
@@ -84,13 +97,18 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<List<ChatMessage>, 
     final auth = ref.read(authProvider);
     final myCompanion = ref.read(myCompanionProfileProvider).valueOrNull;
 
-    if ((myCompanion != null && myCompanion.id == companionId) ||
-        (auth.user != null && auth.user!.id == companionId)) {
-      throw Exception('You cannot send messages to your own host profile');
+    final targetCompanion = ref.read(allCompanionsProvider).valueOrNull?.where((c) => c.id == companionId).firstOrNull;
+    final isHostReplying = (myCompanion != null && myCompanion.id == companionId) ||
+        (auth.user != null && targetCompanion?.userId != null && targetCompanion!.userId == auth.user!.id);
+
+    // If host is trying to send but there are zero messages from any client
+    if (isHostReplying && state.isEmpty) {
+      throw Exception('Cannot send message to your own profile without a client conversation.');
     }
 
-    final targetCompanion = ref.read(allCompanionsProvider).valueOrNull?.where((c) => c.id == companionId).firstOrNull;
-    final targetReceiver = targetCompanion?.userId;
+    // Determine target receiver
+    final incomingClientMsg = state.reversed.where((m) => m.senderId != null && m.senderId != auth.user?.id).firstOrNull;
+    final targetReceiver = isHostReplying ? incomingClientMsg?.senderId : targetCompanion?.userId;
 
     final newMsg = ChatMessage(
       id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
@@ -134,22 +152,28 @@ final threadsProvider = Provider<List<ChatThread>>((ref) {
   final threads = <ChatThread>[];
 
   for (final c in companions) {
-    // Exclude the user's own companion profile from their inbox
+    // Check if this is the user's own companion profile
     final isSelf = (auth.user != null && c.userId != null && c.userId == auth.user!.id) ||
         (myCompanion != null && myCompanion.id == c.id);
-    if (isSelf) continue;
 
     final matchingBooking = bookings.where((b) => b.companion.id == c.id).firstOrNull;
-    final bookingStatus = matchingBooking != null
-        ? switch (matchingBooking.status) {
-            BookingStatus.confirmed => 'Confirmed',
-            BookingStatus.completed => 'Completed',
-            BookingStatus.canceled => 'Canceled',
-            BookingStatus.pending => 'Pending',
-          }
-        : (c.isActive ? 'Available' : 'Paused');
-
     final lastMsg = latestMap[c.id];
+
+    // If it's my own host profile and nobody has chatted or booked it yet, don't show it in inbox
+    if (isSelf && lastMsg == null && matchingBooking == null) {
+      continue;
+    }
+
+    final bookingStatus = isSelf
+        ? 'Host (Client Chat)'
+        : (matchingBooking != null
+            ? switch (matchingBooking.status) {
+                BookingStatus.confirmed => 'Confirmed',
+                BookingStatus.completed => 'Completed',
+                BookingStatus.canceled => 'Canceled',
+                BookingStatus.pending => 'Pending',
+              }
+            : (c.isActive ? 'Available' : 'Paused'));
 
     threads.add(ChatThread(
       companion: c,

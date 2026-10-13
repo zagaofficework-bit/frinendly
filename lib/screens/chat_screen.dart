@@ -314,7 +314,7 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     final isSelf = (auth.user != null && c?.userId != null && c!.userId == auth.user!.id) ||
         (myCompanion != null && myCompanion.id == widget.companionId);
 
-    if (isSelf) {
+    if (isSelf && messages.isEmpty) {
       return Scaffold(
         appBar: AppBar(
           title: Text(c?.name ?? 'Host Profile'),
@@ -328,19 +328,19 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: Colors.blue.shade50,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.person_outline, size: 48, color: Colors.orange.shade700),
+                  child: Icon(Icons.forum_outlined, size: 48, color: Colors.blue.shade700),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Your Host Profile',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  '${c?.name ?? "Host"} Inbox',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'You cannot chat with yourself.',
+                  'No client messages yet. When clients book or message your profile, their messages will appear here.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey, height: 1.4),
                 ),
@@ -364,7 +364,8 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
       }
     });
 
-    final partnerName = c?.name ?? 'Companion';
+    final partnerName = isSelf ? '${c?.name ?? "Host"} · Client Conversation' : (c?.name ?? 'Companion');
+    final partnerSubtitle = isSelf ? 'Host Mode · Replying to Client' : 'Online • Platonic Match';
 
     return Scaffold(
       appBar: AppBar(
@@ -386,10 +387,10 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                 children: [
                   Text(partnerName, style: const TextStyle(fontSize: 16)),
                   Text(
-                    'Online • Platonic Match',
+                    partnerSubtitle,
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.green.shade600,
+                      color: isSelf ? Colors.blue.shade600 : Colors.green.shade600,
                     ),
                   ),
                 ],
