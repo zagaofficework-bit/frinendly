@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -423,6 +424,16 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
           const SnackBar(
             content: Text('Location permission was denied.'),
             backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } on MissingPluginException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GPS plugin requires app restart. Please stop and run "flutter run".'),
+            backgroundColor: Colors.deepOrange,
+            duration: Duration(seconds: 4),
           ),
         );
       }
