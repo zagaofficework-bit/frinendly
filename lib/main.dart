@@ -13,6 +13,16 @@ import 'screens/auth_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Safeguard against asynchronous socket/network exceptions (e.g. offline token refresh)
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    debugPrint('⚠️ Handled platform network error: $error');
+    return true; // Return true to prevent unhandled crash
+  };
+
   if (SupabaseConfig.isConfigured) {
     try {
       await Supabase.initialize(
