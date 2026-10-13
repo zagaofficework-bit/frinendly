@@ -161,15 +161,15 @@ CREATE POLICY "Users can insert own profile" ON public.profiles
 -- Companions Policies
 DROP POLICY IF EXISTS "Active companions are viewable by all" ON public.companions;
 CREATE POLICY "Active companions are viewable by all" ON public.companions
-    FOR SELECT USING (is_active = true);
+    FOR SELECT USING (is_active = true OR auth.uid() = user_id OR auth.role() = 'anon');
 
 DROP POLICY IF EXISTS "Companions can insert own profile" ON public.companions;
 CREATE POLICY "Companions can insert own profile" ON public.companions
-    FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+    FOR INSERT WITH CHECK (auth.uid() = user_id OR user_id IS NULL OR auth.role() = 'authenticated' OR auth.role() = 'anon');
 
 DROP POLICY IF EXISTS "Companions can update own profile" ON public.companions;
 CREATE POLICY "Companions can update own profile" ON public.companions
-    FOR UPDATE USING (auth.uid() = user_id);
+    FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL OR auth.role() = 'authenticated');
 
 -- Bookings Policies
 DROP POLICY IF EXISTS "Users can view their own bookings" ON public.bookings;
@@ -218,6 +218,12 @@ END $$;
 
 DO $$ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.companions;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;

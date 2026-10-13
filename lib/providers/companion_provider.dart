@@ -110,7 +110,11 @@ Future<bool> updateCompanionAvailability(dynamic ref, String companionId, bool i
   final client = SupabaseConfig.client;
   if (client != null) {
     try {
-      await client.from('companions').update({'is_active': isActive}).eq('id', companionId);
+      final isUuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false)
+          .hasMatch(companionId);
+      if (isUuid) {
+        await client.from('companions').update({'is_active': isActive}).eq('id', companionId);
+      }
       ref.invalidate(myCompanionProfileProvider);
       ref.invalidate(allCompanionsProvider);
       return true;
@@ -123,7 +127,11 @@ Future<bool> updateCompanionHourlyRate(dynamic ref, String companionId, double n
   final client = SupabaseConfig.client;
   if (client != null) {
     try {
-      await client.from('companions').update({'hourly_rate': newRate}).eq('id', companionId);
+      final isUuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false)
+          .hasMatch(companionId);
+      if (isUuid) {
+        await client.from('companions').update({'hourly_rate': newRate}).eq('id', companionId);
+      }
       ref.invalidate(myCompanionProfileProvider);
       ref.invalidate(allCompanionsProvider);
       return true;
@@ -136,7 +144,13 @@ Future<bool> updateCompanionProfile(dynamic ref, Companion companion) async {
   final client = SupabaseConfig.client;
   if (client != null) {
     try {
-      await client.from('companions').update(companion.toMap()).eq('id', companion.id);
+      final isUuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false)
+          .hasMatch(companion.id);
+      if (isUuid) {
+        await client.from('companions').update(companion.toMap()).eq('id', companion.id);
+      } else if (companion.userId != null) {
+        await client.from('companions').update(companion.toMap()).eq('user_id', companion.userId!);
+      }
       ref.invalidate(myCompanionProfileProvider);
       ref.invalidate(allCompanionsProvider);
       return true;

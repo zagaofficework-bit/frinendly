@@ -170,5 +170,25 @@ void main() {
       final fetched = await chatRepo.fetchMessages(targetCompanionId);
       expect(fetched, isNotEmpty);
     });
+
+    test('9. Test Companions table columns (activities, languages, gallery, tags, bio) in live database', () async {
+      final response = await client
+          .from('companions')
+          .select('id, name, age, city, bio, avatar_url, activities, languages, gallery, tags, hourly_rate, is_active')
+          .limit(3);
+
+      expect(response, isA<List>());
+      final list = response as List;
+      expect(list, isNotEmpty);
+
+      final row = list.first as Map<String, dynamic>;
+      expect(row.containsKey('activities'), isTrue, reason: 'companions table must have activities column');
+      expect(row.containsKey('languages'), isTrue, reason: 'companions table must have languages column');
+      expect(row.containsKey('gallery'), isTrue, reason: 'companions table must have gallery column');
+      expect(row.containsKey('bio'), isTrue, reason: 'companions table must have bio column');
+      expect(row.containsKey('city'), isTrue, reason: 'companions table must have city column');
+      expect(row.containsKey('hourly_rate'), isTrue, reason: 'companions table must have hourly_rate column');
+      expect(row.containsKey('is_active'), isTrue, reason: 'companions table must have is_active column');
+    });
   });
 }
