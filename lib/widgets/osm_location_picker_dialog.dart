@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -25,6 +29,43 @@ class MeetupLocationResult {
       );
 }
 
+class OsmSearchResult {
+  final String displayName;
+  final String name;
+  final double latitude;
+  final double longitude;
+  final String? type;
+  final String? category;
+
+  const OsmSearchResult({
+    required this.displayName,
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+    this.type,
+    this.category,
+  });
+
+  factory OsmSearchResult.fromJson(Map<String, dynamic> json) {
+    final lat = double.tryParse(json['lat']?.toString() ?? '') ?? 0.0;
+    final lon = double.tryParse(json['lon']?.toString() ?? '') ?? 0.0;
+    final displayName = json['display_name'] as String? ?? 'Unknown Place';
+    final rawName = json['name'] as String?;
+    final name = (rawName != null && rawName.isNotEmpty)
+        ? rawName
+        : displayName.split(',').first.trim();
+
+    return OsmSearchResult(
+      displayName: displayName,
+      name: name,
+      latitude: lat,
+      longitude: lon,
+      type: json['type'] as String?,
+      category: json['class'] as String?,
+    );
+  }
+}
+
 class OsmLocationPickerDialog extends StatefulWidget {
   final double initialLat;
   final double initialLng;
@@ -44,8 +85,17 @@ class OsmLocationPickerDialog extends StatefulWidget {
 class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
   late final MapController _mapController;
   late final TextEditingController _nameController;
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
+
   late LatLng _currentCenter;
   double _currentZoom = 15.0;
+
+  Timer? _debounceTimer;
+  bool _isSearching = false;
+  bool _isLocating = false;
+  String? _searchError;
+  List<OsmSearchResult> _searchResults = [];
 
   static const List<({String name, double lat, double lng, String tag})> _presets = [
     (
@@ -86,12 +136,17 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
     _mapController = MapController();
     _currentCenter = LatLng(widget.initialLat, widget.initialLng);
     _nameController = TextEditingController(text: widget.initialName);
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _mapController.dispose();
     _nameController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -101,6 +156,251 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
       _nameController.text = name;
     });
     _mapController.move(target, _currentZoom);
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _isSearching = false;
+        _searchResults = [];
+        _searchError = null;
+      });
+      return;
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _performSearch(query.trim());
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) return;
+
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
+
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&addressdetails=1&limit=8',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'User-Agent': 'Friendify-App/1.0 (contact: info@friendify.app)',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
+        final results = data
+            .map((item) => OsmSearchResult.fromJson(item as Map<String, dynamic>))
+            .where((r) => r.latitude != 0.0 && r.longitude != 0.0)
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+            _searchError = results.isEmpty ? 'No results found on OpenStreetMap' : null;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _searchResults = [];
+            _isSearching = false;
+            _searchError = 'Search service error (${response.statusCode})';
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+          _searchError = 'Network error or timeout. Please check your connection.';
+        });
+      }
+    }
+  }
+
+  void _selectSearchResult(OsmSearchResult result) {
+    final target = LatLng(result.latitude, result.longitude);
+    _currentZoom = 16.0;
+    _moveTo(target, result.name.isNotEmpty ? result.name : result.displayName);
+
+    setState(() {
+      _searchResults = [];
+      _isSearching = false;
+      _searchError = null;
+      _searchController.text = result.name;
+    });
+    _searchFocusNode.unfocus();
+  }
+
+  Future<void> _relocateToMyPosition() async {
+    setState(() {
+      _isLocating = true;
+    });
+
+    try {
+      // 1. Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location services are turned off. Please enable GPS on your device.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. Check and request location permission
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location permission was denied.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permissions are permanently denied. Please allow them in device settings.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 3. Acquire live GPS coordinates
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+
+      if (pos == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not obtain current GPS position. Try moving outdoors.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      final target = LatLng(pos.latitude, pos.longitude);
+      _currentZoom = 16.0;
+      final defaultName = 'My Live GPS Location (${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)})';
+      _moveTo(target, defaultName);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Relocated to: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green.shade800,
+          ),
+        );
+      }
+
+      // 4. Reverse geocode asynchronously via Nominatim
+      _reverseGeocode(pos.latitude, pos.longitude);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to determine location: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _reverseGeocode(double lat, double lon) async {
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json',
+      );
+      final response = await http.get(
+        uri,
+        headers: {
+          'User-Agent': 'Friendify-App/1.0 (contact: info@friendify.app)',
+          'Accept': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 6));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawName = data['name'] as String?;
+        final displayName = data['display_name'] as String?;
+
+        String resolved = '';
+        if (rawName != null && rawName.isNotEmpty) {
+          resolved = rawName;
+        } else if (displayName != null && displayName.isNotEmpty) {
+          final parts = displayName.split(',').map((p) => p.trim()).toList();
+          resolved = parts.length > 2 ? '${parts[0]}, ${parts[1]}' : displayName;
+        }
+
+        if (resolved.isNotEmpty && mounted) {
+          setState(() {
+            _nameController.text = resolved;
+          });
+        }
+      }
+    } catch (_) {
+      // Retain fallback coordinates string
+    }
+  }
+
+  void _shareSelectedPin() {
+    final name = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
+        : 'Meetup Location (${_currentCenter.latitude.toStringAsFixed(4)}, ${_currentCenter.longitude.toStringAsFixed(4)})';
+
+    Navigator.of(context).pop(
+      MeetupLocationResult(
+        name: name,
+        latitude: _currentCenter.latitude,
+        longitude: _currentCenter.longitude,
+      ),
+    );
   }
 
   @override
@@ -122,18 +422,7 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-              onPressed: () {
-                final name = _nameController.text.trim().isNotEmpty
-                    ? _nameController.text.trim()
-                    : 'Meetup Location (${_currentCenter.latitude.toStringAsFixed(4)}, ${_currentCenter.longitude.toStringAsFixed(4)})';
-                Navigator.of(context).pop(
-                  MeetupLocationResult(
-                    name: name,
-                    latitude: _currentCenter.latitude,
-                    longitude: _currentCenter.longitude,
-                  ),
-                );
-              },
+              onPressed: _shareSelectedPin,
               icon: const Icon(Icons.check, size: 18),
               label: const Text('Share Pin'),
             ),
@@ -142,28 +431,87 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
         ),
         body: Column(
           children: [
+            // Search Bar for OpenStreetMap live database
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+              color: theme.scaffoldBackgroundColor,
+              child: TextField(
+                key: const Key('osm_search_text_field'),
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                textInputAction: TextInputAction.search,
+                onChanged: _onSearchChanged,
+                onSubmitted: (query) => _performSearch(query.trim()),
+                decoration: InputDecoration(
+                  hintText: 'Search place, cafe, street, landmark (OSM)...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isSearching)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else if (_searchController.text.isNotEmpty)
+                        IconButton(
+                          key: const Key('osm_search_clear_button'),
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchResults = [];
+                              _searchError = null;
+                            });
+                          },
+                        ),
+                      IconButton(
+                        key: const Key('osm_search_submit_button'),
+                        icon: const Icon(Icons.arrow_forward, size: 20),
+                        tooltip: 'Search OSM database',
+                        onPressed: () => _performSearch(_searchController.text.trim()),
+                      ),
+                    ],
+                  ),
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+
             // Safe Presets Bar
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.25),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.verified_outlined, size: 15, color: Colors.green),
+                      const Icon(Icons.verified_outlined, size: 14, color: Colors.green),
                       const SizedBox(width: 6),
                       Text(
                         'Verified Safe Public Venues:',
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.green.shade800,
+                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -176,11 +524,13 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                             selected: isSelected,
                             avatar: Icon(
                               Icons.location_on,
-                              size: 16,
+                              size: 15,
                               color: isSelected ? cs.onPrimary : cs.primary,
                             ),
-                            label: Text(preset.name.split(',').first),
-                            onSelected: (_) => _moveTo(LatLng(preset.lat, preset.lng), preset.name),
+                            label: Text(preset.name.split(',').first, style: const TextStyle(fontSize: 12)),
+                            onSelected: (_) {
+                              _selectPreset(preset);
+                            },
                           ),
                         );
                       }).toList(),
@@ -190,7 +540,7 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
               ),
             ),
 
-            // Map Area with Center Pin Overlay
+            // Map Area with Center Pin Overlay & Live Search Results Dropdown
             Expanded(
               child: Stack(
                 alignment: Alignment.center,
@@ -260,6 +610,102 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                     ),
                   ),
 
+                  // Search Results Floating Panel
+                  if (_searchResults.isNotEmpty || _searchError != null)
+                    Positioned(
+                      top: 10,
+                      left: 12,
+                      right: 12,
+                      child: Material(
+                        elevation: 6,
+                        borderRadius: BorderRadius.circular(12),
+                        color: theme.cardColor,
+                        child: Container(
+                          constraints: const BoxConstraints(maxHeight: 280),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.travel_explore, size: 16),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _searchError != null
+                                          ? 'Search Notice'
+                                          : 'OpenStreetMap Results (${_searchResults.length})',
+                                      style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, size: 18),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        setState(() {
+                                          _searchResults = [];
+                                          _searchError = null;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_searchError != null)
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text(
+                                    _searchError!,
+                                    style: TextStyle(color: cs.error, fontSize: 13),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                )
+                              else
+                                Flexible(
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    padding: EdgeInsets.zero,
+                                    itemCount: _searchResults.length,
+                                    separatorBuilder: (_, __) => const Divider(height: 1),
+                                    itemBuilder: (context, index) {
+                                      final item = _searchResults[index];
+                                      return ListTile(
+                                        key: Key('osm_search_result_$index'),
+                                        dense: true,
+                                        leading: const Icon(Icons.location_on, color: Colors.redAccent, size: 20),
+                                        title: Text(
+                                          item.name,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        subtitle: Text(
+                                          item.displayName,
+                                          style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: const Icon(Icons.north_west, size: 16),
+                                        onTap: () => _selectSearchResult(item),
+                                      );
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                   // Zoom & Recenter Controls
                   Positioned(
                     right: 16,
@@ -268,7 +714,9 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         FloatingActionButton.small(
+                          key: const Key('osm_zoom_in'),
                           heroTag: 'osm_zoom_in',
+                          tooltip: 'Zoom in',
                           onPressed: () {
                             _currentZoom = (_currentZoom + 1).clamp(4.0, 19.0);
                             _mapController.move(_currentCenter, _currentZoom);
@@ -277,7 +725,9 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                         ),
                         const SizedBox(height: 8),
                         FloatingActionButton.small(
+                          key: const Key('osm_zoom_out'),
                           heroTag: 'osm_zoom_out',
+                          tooltip: 'Zoom out',
                           onPressed: () {
                             _currentZoom = (_currentZoom - 1).clamp(4.0, 19.0);
                             _mapController.move(_currentCenter, _currentZoom);
@@ -286,10 +736,18 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                         ),
                         const SizedBox(height: 8),
                         FloatingActionButton.small(
+                          key: const Key('osm_recenter'),
                           heroTag: 'osm_recenter',
+                          tooltip: 'Relocate to my GPS position',
                           backgroundColor: cs.primaryContainer,
-                          onPressed: () => _moveTo(const LatLng(19.0600, 72.8338), 'Starbucks Coffee, Bandra West'),
-                          child: const Icon(Icons.my_location),
+                          onPressed: _isLocating ? null : _relocateToMyPosition,
+                          child: _isLocating
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.my_location),
                         ),
                       ],
                     ),
@@ -340,6 +798,7 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                         labelText: 'Venue / Spot Name',
                         prefixIcon: const Icon(Icons.place_outlined),
                         suffixIcon: IconButton(
+                          key: const Key('osm_clear_name_button'),
                           icon: const Icon(Icons.clear, size: 18),
                           onPressed: () => _nameController.clear(),
                         ),
@@ -359,6 +818,7 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                           ),
                         ),
                         TextButton.icon(
+                          key: const Key('osm_preview_gmaps_button'),
                           onPressed: () async {
                             final uri = Uri.parse(
                               'https://www.google.com/maps/search/?api=1&query=${_currentCenter.latitude},${_currentCenter.longitude}',
@@ -385,5 +845,9 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
         ),
       ),
     );
+  }
+
+  void _selectPreset(({double lat, double lng, String name, String tag}) preset) {
+    _moveTo(LatLng(preset.lat, preset.lng), preset.name);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../models/chat_message.dart';
@@ -359,10 +360,33 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                   child: Icon(Icons.my_location, color: Colors.orange),
                 ),
                 title: const Text('Share Live GPS Coordinates'),
-                subtitle: const Text('Live location snapshot (19.0760, 72.8777)', style: TextStyle(fontSize: 11)),
-                onTap: () {
+                subtitle: const Text('Real-time device GPS snapshot', style: TextStyle(fontSize: 11)),
+                onTap: () async {
                   Navigator.pop(ctx);
-                  _sendLocation('Current GPS Location', 19.0760, 72.8777);
+                  double lat = 19.0760;
+                  double lng = 72.8777;
+                  String label = 'Current GPS Location';
+                  try {
+                    final hasService = await Geolocator.isLocationServiceEnabled();
+                    if (hasService) {
+                      var perm = await Geolocator.checkPermission();
+                      if (perm == LocationPermission.denied) {
+                        perm = await Geolocator.requestPermission();
+                      }
+                      if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
+                        final pos = await Geolocator.getCurrentPosition(
+                          locationSettings: const LocationSettings(
+                            accuracy: LocationAccuracy.high,
+                            timeLimit: Duration(seconds: 5),
+                          ),
+                        );
+                        lat = pos.latitude;
+                        lng = pos.longitude;
+                        label = 'Live GPS Location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
+                      }
+                    }
+                  } catch (_) {}
+                  _sendLocation(label, lat, lng);
                 },
               ),
             ],
