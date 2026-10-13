@@ -21,17 +21,21 @@ class OsmMapBubble extends StatelessWidget {
   });
 
   Future<void> _openInGoogleMaps(BuildContext context) async {
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+    final webUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
+    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude');
+
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open map: $uri')),
-          );
-        }
-      }
+      final geoLaunched = await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      if (geoLaunched) return;
+    } catch (_) {}
+
+    try {
+      final webLaunched = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      if (webLaunched) return;
+    } catch (_) {}
+
+    try {
+      await launchUrl(webUri, mode: LaunchMode.platformDefault);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

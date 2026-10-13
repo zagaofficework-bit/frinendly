@@ -363,8 +363,13 @@ class _OsmLocationPickerDialogState extends State<OsmLocationPickerDialog> {
                             final uri = Uri.parse(
                               'https://www.google.com/maps/search/?api=1&query=${_currentCenter.latitude},${_currentCenter.longitude}',
                             );
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            try {
+                              final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              if (!launched) {
+                                await launchUrl(uri, mode: LaunchMode.platformDefault);
+                              }
+                            } catch (_) {
+                              await launchUrl(uri);
                             }
                           },
                           icon: const Icon(Icons.open_in_new, size: 14),
