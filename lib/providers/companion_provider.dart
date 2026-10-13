@@ -58,7 +58,10 @@ final companionsProvider = Provider<AsyncValue<List<Companion>>>((ref) {
 
         final q = f.query.toLowerCase();
         final loc = f.location.toLowerCase();
-        return (q.isEmpty || c.name.toLowerCase().contains(q) || c.tags.any((t) => t.toLowerCase().contains(q))) &&
+        return (q.isEmpty ||
+                c.name.toLowerCase().contains(q) ||
+                c.city.toLowerCase().contains(q) ||
+                c.tags.any((t) => t.toLowerCase().contains(q))) &&
             (loc.isEmpty || c.city.toLowerCase().contains(loc)) &&
             (f.activity == null || c.activities.contains(f.activity)) &&
             c.hourlyRate >= f.minRate && c.hourlyRate <= f.maxRate && c.rating >= f.minRating;

@@ -30,6 +30,63 @@ class _AccountState extends ConsumerState<AccountScreen> {
     if (v != null && v.isNotEmpty) ref.read(contactsProvider.notifier).add(v);
   }
 
+  void _showEditProfileDialog(BuildContext context, user) {
+    final nameCtrl = TextEditingController(text: user.displayName);
+    final avatarCtrl = TextEditingController(text: user.avatarUrl ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Display Name',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: avatarCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Avatar Image URL',
+                hintText: 'https://...',
+                prefixIcon: Icon(Icons.image_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newName = nameCtrl.text.trim();
+              final newAvatar = avatarCtrl.text.trim();
+              if (newName.isNotEmpty) {
+                Navigator.pop(ctx);
+                await ref.read(authProvider.notifier).updateProfile(
+                  displayName: newName,
+                  avatarUrl: newAvatar.isNotEmpty ? newAvatar : null,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile updated successfully!')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _statusColor(BookingStatus s) => switch (s) {
         BookingStatus.confirmed => Colors.green,
         BookingStatus.completed => Colors.blue,
@@ -100,15 +157,26 @@ class _AccountState extends ConsumerState<AccountScreen> {
                           .colorScheme
                           .primary
                           .withValues(alpha: 0.2),
-                      child: Text(
-                        authState.user!.displayName.isNotEmpty
-                            ? authState.user!.displayName[0].toUpperCase()
-                            : 'U',
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary),
-                      ),
+                      backgroundImage: (authState.user!.avatarUrl != null &&
+                              authState.user!.avatarUrl!.isNotEmpty)
+                          ? NetworkImage(authState.user!.avatarUrl!)
+                          : null,
+                      onBackgroundImageError: (authState.user!.avatarUrl != null &&
+                              authState.user!.avatarUrl!.isNotEmpty)
+                          ? (_, __) {}
+                          : null,
+                      child: (authState.user!.avatarUrl == null ||
+                              authState.user!.avatarUrl!.isEmpty)
+                          ? Text(
+                              authState.user!.displayName.isNotEmpty
+                                  ? authState.user!.displayName[0].toUpperCase()
+                                  : 'U',
+                              style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -141,6 +209,11 @@ class _AccountState extends ConsumerState<AccountScreen> {
                               ),
                             ),
                           ]),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      tooltip: 'Edit Profile',
+                      onPressed: () => _showEditProfileDialog(context, authState.user!),
                     ),
                   ]),
                 ),
@@ -230,181 +303,7 @@ class _AccountState extends ConsumerState<AccountScreen> {
                   padding: EdgeInsets.all(24),
                   child: Center(child: Text('Nothing here yet'))),
             for (final b in shown)
-              Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundImage: b.companion.avatarUrl.isNotEmpty
-                                ? NetworkImage(b.companion.avatarUrl)
-                                : null,
-                            onBackgroundImageError: b.companion.avatarUrl.isNotEmpty
-                                ? (_, __) {}
-                                : null,
-                            child: b.companion.avatarUrl.isEmpty
-                                ? Text(b.companion.name.isNotEmpty
-                                    ? b.companion.name[0].toUpperCase()
-                                    : 'C')
-                                : null,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        '${b.activity} with ${b.companion.name}',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: _statusColor(b.status)
-                                            .withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        b.status.name.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: _statusColor(b.status),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.hours}h',
-                                  style: text.bodySmall,
-                                ),
-                                Text(
-                                  '${b.location} · \$${b.total.toStringAsFixed(2)}',
-                                  style: text.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (b.isUpcoming) ...[
-                        const Divider(height: 16),
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          runSpacing: 8,
-                          spacing: 8,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                              label: const Text('Chat'),
-                              onPressed: () => context.push('/chat/${b.companion.id}'),
-                            ),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.cancel_outlined, size: 16),
-                                  label: const Text('Cancel'),
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: const Text('Cancel Booking'),
-                                        content: Text(
-                                            'Are you sure you want to cancel the booking with ${b.companion.name}? Full refund will be issued.'),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, false),
-                                              child: const Text('Keep')),
-                                          FilledButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(ctx, true),
-                                              child: const Text('Cancel Booking')),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      await ref
-                                          .read(bookingsProvider.notifier)
-                                          .cancel(b.id);
-                                    }
-                                  },
-                                ),
-                                FilledButton.icon(
-                                  icon: const Icon(Icons.check_circle_outline,
-                                      size: 16),
-                                  label: const Text('Complete'),
-                                  onPressed: () async {
-                                    await ref
-                                        .read(bookingsProvider.notifier)
-                                        .complete(b.id);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              'Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
-                                        ),
-                                      );
-                                      _showPostMeetupReviewDialog(b);
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                      if (b.status == BookingStatus.completed) ...[
-                        const Divider(height: 16),
-                        Wrap(
-                          alignment: WrapAlignment.end,
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                              label: const Text('Chat History'),
-                              onPressed: () => context.push('/chat/${b.companion.id}'),
-                            ),
-                            OutlinedButton.icon(
-                              key: Key('rate_review_${b.id}'),
-                              icon: const Icon(Icons.star_rate_rounded,
-                                  size: 16, color: Colors.amber),
-                              label: const Text('Rate & Review'),
-                              onPressed: () => _showPostMeetupReviewDialog(b),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+              _buildBookingCard(context, b, authState, text),
             const Divider(height: 32),
             Row(
               children: [
@@ -581,6 +480,205 @@ class _AccountState extends ConsumerState<AccountScreen> {
           FilledButton(
               onPressed: () => Navigator.pop(ctx), child: const Text('Got It')),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBookingCard(
+    BuildContext context,
+    Booking b,
+    AuthState authState,
+    TextTheme text,
+  ) {
+    final isHost = authState.user?.isCompanion == true;
+    final partnerName = (isHost && b.clientName != null && b.clientName!.isNotEmpty)
+        ? b.clientName!
+        : b.companion.name;
+    final partnerAvatar = (isHost && b.clientAvatar != null && b.clientAvatar!.isNotEmpty)
+        ? b.clientAvatar!
+        : b.companion.avatarUrl;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundImage: partnerAvatar.isNotEmpty
+                      ? NetworkImage(partnerAvatar)
+                      : null,
+                  onBackgroundImageError: partnerAvatar.isNotEmpty
+                      ? (_, __) {}
+                      : null,
+                  child: partnerAvatar.isEmpty
+                      ? Text(partnerName.isNotEmpty
+                          ? partnerName[0].toUpperCase()
+                          : 'C')
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${b.activity} with $partnerName',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _statusColor(b.status)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              b.status.name.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: _statusColor(b.status),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isHost && b.clientName != null) ...[
+                        const SizedBox(height: 2),
+                        Text('Client: ${b.clientName}',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blue.shade700)),
+                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        '${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.hours}h',
+                        style: text.bodySmall,
+                      ),
+                      Text(
+                        '${b.location} · \$${b.total.toStringAsFixed(2)}',
+                        style: text.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (b.isUpcoming) ...[
+              const Divider(height: 16),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                runSpacing: 8,
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: const Text('Chat'),
+                    onPressed: () => context.push('/chat/${b.companion.id}'),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.cancel_outlined, size: 16),
+                        label: const Text('Cancel'),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Cancel Booking'),
+                              content: Text(
+                                  'Are you sure you want to cancel the booking with $partnerName? Full refund will be issued.'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(ctx, false),
+                                    child: const Text('Keep')),
+                                FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(ctx, true),
+                                    child: const Text('Cancel Booking')),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await ref
+                                .read(bookingsProvider.notifier)
+                                .cancel(b.id);
+                          }
+                        },
+                      ),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.check_circle_outline,
+                            size: 16),
+                        label: const Text('Complete'),
+                        onPressed: () async {
+                          await ref
+                              .read(bookingsProvider.notifier)
+                              .complete(b.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Meetup concluded! Escrow payout of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to host wallet.'),
+                              ),
+                            );
+                            _showPostMeetupReviewDialog(b);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+            if (b.status == BookingStatus.completed) ...[
+              const Divider(height: 16),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: const Text('Chat History'),
+                    onPressed: () => context.push('/chat/${b.companion.id}'),
+                  ),
+                  OutlinedButton.icon(
+                    key: Key('rate_review_${b.id}'),
+                    icon: const Icon(Icons.star_rate_rounded,
+                        size: 16, color: Colors.amber),
+                    label: const Text('Rate & Review'),
+                    onPressed: () => _showPostMeetupReviewDialog(b),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

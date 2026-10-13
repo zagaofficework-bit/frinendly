@@ -1,10 +1,10 @@
 class Companion {
-  final String id, name, bio, avatarUrl, city;
+  final String id, name, bio, avatarUrl, city, availabilityHours;
   final String? userId;
   final int age, reviewCount;
   final double hourlyRate, rating, distanceKm;
   final bool verified, backgroundChecked, isActive;
-  final List<String> gallery, languages, tags, activities, badges;
+  final List<String> gallery, languages, tags, activities, badges, availabilityDays;
   const Companion({
     required this.id, required this.name, required this.age, required this.bio,
     required this.avatarUrl, required this.city, required this.hourlyRate,
@@ -13,6 +13,8 @@ class Companion {
     this.verified = true, this.backgroundChecked = true, this.isActive = true,
     this.gallery = const [], this.languages = const [], this.tags = const [],
     this.activities = const [], this.badges = const [],
+    this.availabilityDays = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    this.availabilityHours = '10:00 AM - 08:00 PM',
   });
 
   factory Companion.fromMap(Map<String, dynamic> map) {
@@ -36,6 +38,9 @@ class Companion {
       tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       activities: (map['activities'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       badges: (map['badges'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      availabilityDays: (map['availability_days'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      availabilityHours: map['availability_hours']?.toString() ?? '10:00 AM - 08:00 PM',
     );
   }
 
@@ -58,6 +63,8 @@ class Companion {
     'tags': tags,
     'activities': activities,
     'badges': badges,
+    'availability_days': availabilityDays,
+    'availability_hours': availabilityHours,
   };
 
   Companion copyWith({
@@ -80,6 +87,8 @@ class Companion {
     List<String>? tags,
     List<String>? activities,
     List<String>? badges,
+    List<String>? availabilityDays,
+    String? availabilityHours,
   }) =>
       Companion(
         id: id ?? this.id,
@@ -101,6 +110,8 @@ class Companion {
         tags: tags ?? this.tags,
         activities: activities ?? this.activities,
         badges: badges ?? this.badges,
+        availabilityDays: availabilityDays ?? this.availabilityDays,
+        availabilityHours: availabilityHours ?? this.availabilityHours,
       );
 }
 

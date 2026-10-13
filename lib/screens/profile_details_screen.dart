@@ -203,12 +203,22 @@ class _Body extends ConsumerWidget {
             expandedHeight: 340,
             pinned: true,
             actions: [
-              if (!isSelf)
+              if (!isSelf) ...[
+                IconButton(
+                  tooltip: 'Save to Favorites',
+                  icon: const Icon(Icons.favorite_border),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${c.name} saved to your favorites!')),
+                    );
+                  },
+                ),
                 IconButton(
                   tooltip: 'Chat with ${c.name}',
                   icon: const Icon(Icons.chat_bubble_outline),
                   onPressed: () => context.push('/chat/${c.id}'),
                 ),
+              ],
             ],
             flexibleSpace: FlexibleSpaceBar(background: _Carousel(c: c))),
         SliverPadding(
@@ -240,6 +250,37 @@ class _Body extends ConsumerWidget {
                       avatar: Icon(Icons.shield, size: 16, color: Colors.green),
                       label: Text('Background checked')),
               ]),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.teal.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded, color: Colors.teal, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Available Schedule',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.teal),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${c.availabilityDays.join(", ")} · ${c.availabilityHours}',
+                            style: TextStyle(fontSize: 12, color: Colors.teal.shade800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
               Text('About', style: text.titleMedium),
               const SizedBox(height: 4),

@@ -210,6 +210,23 @@ class AuthNotifier extends Notifier<AuthState> {
     state = const AuthState(isLoading: false, isGuest: true, user: null);
   }
 
+  Future<void> updateProfile({String? displayName, String? avatarUrl}) async {
+    if (state.user == null) return;
+    final updated = state.user!.copyWith(
+      displayName: displayName ?? state.user!.displayName,
+      avatarUrl: avatarUrl ?? state.user!.avatarUrl,
+    );
+    final client = SupabaseConfig.client;
+    if (client != null) {
+      try {
+        await client.from('profiles').update(updated.toMap()).eq('id', updated.id);
+      } catch (e) {
+        debugPrint('Error updating profile in Supabase: $e');
+      }
+    }
+    state = state.copyWith(user: updated);
+  }
+
   void continueAsGuest() {
     state = const AuthState(isLoading: false, isGuest: true, user: null);
   }

@@ -8,6 +8,7 @@ import 'package:friendify/providers/companion_provider.dart';
 import 'package:friendify/providers/booking_provider.dart';
 import 'package:friendify/screens/explore_screen.dart';
 import 'package:friendify/screens/booking_modal.dart';
+import 'package:friendify/screens/profile_details_screen.dart';
 
 void main() {
   group('Tab 1: Explore & Booking Engine Tests', () {
@@ -187,6 +188,77 @@ void main() {
       expect(list.length, 1);
       expect(list.any((c) => c.id == 'c_host_1'), false);
       expect(list.first.id, 'c_other_2');
+    });
+
+    test('companionsProvider matches city name query in unified search', () async {
+      final container = ProviderContainer(
+        overrides: [
+          allCompanionsProvider.overrideWith((ref) => Future.value([
+            const Companion(
+              id: 'c_mumbai',
+              name: 'Aarav',
+              age: 24,
+              city: 'Mumbai',
+              bio: 'City explorer',
+              avatarUrl: '',
+              hourlyRate: 20.0,
+              rating: 5.0,
+              reviewCount: 3,
+              distanceKm: 1.0,
+            ),
+            const Companion(
+              id: 'c_pune',
+              name: 'Priya',
+              age: 23,
+              city: 'Pune',
+              bio: 'Coffee lover',
+              avatarUrl: '',
+              hourlyRate: 25.0,
+              rating: 4.8,
+              reviewCount: 5,
+              distanceKm: 2.0,
+            ),
+          ])),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(allCompanionsProvider.future);
+
+      // Search by city name "Mumbai"
+      container.read(filterProvider.notifier).update(const CompanionFilter(query: 'Mumbai'));
+      final mumbaiResults = container.read(companionsProvider).value!;
+      expect(mumbaiResults.length, 1);
+      expect(mumbaiResults.first.city, 'Mumbai');
+
+      // Search by city name "Pune"
+      container.read(filterProvider.notifier).update(const CompanionFilter(query: 'pune'));
+      final puneResults = container.read(companionsProvider).value!;
+      expect(puneResults.length, 1);
+      expect(puneResults.first.city, 'Pune');
+    });
+
+    testWidgets('ProfileDetailsScreen renders available schedule and favorite action', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            companionByIdProvider('c0').overrideWith((ref) => Future.value(testCompanion)),
+          ],
+          child: const MaterialApp(
+            home: ProfileDetailsScreen(id: 'c0'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Available Schedule'), findsOneWidget);
+      expect(find.byTooltip('Save to Favorites'), findsOneWidget);
+      expect(find.text('Maya, 22'), findsOneWidget);
     });
   });
 }

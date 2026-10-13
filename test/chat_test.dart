@@ -139,6 +139,37 @@ void main() {
       expect(find.textContaining('🚨 Live GPS'), findsOneWidget);
     });
 
+    test('ChatMessage supports image serialization', () {
+      final imgMsg = ChatMessage(
+        id: 'img_1',
+        text: 'Found this nice cafe spot for our meetup! ☕',
+        mine: true,
+        type: MessageType.image,
+        time: DateTime.now(),
+        payload: {
+          'image_url': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600',
+        },
+      );
+
+      final map = imgMsg.toMap(senderId: 'u1', receiverId: 'c1', companionId: 'c1');
+      expect(map['type'], 'image');
+      expect(map['payload']['image_url'], contains('unsplash'));
+
+      final fromMap = ChatMessage.fromMap({
+        'id': 'img_1',
+        'sender_id': 'u1',
+        'type': 'image',
+        'text': 'Found this nice cafe spot for our meetup! ☕',
+        'payload': {'image_url': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600'},
+        'created_at': DateTime.now().toIso8601String(),
+        'is_read': false,
+      }, 'u1');
+
+      expect(fromMap.mine, true);
+      expect(fromMap.type, MessageType.image);
+      expect(fromMap.payload?['image_url'], contains('unsplash'));
+    });
+
     testWidgets('ChatRoomScreen location picker modal shares public meetup spot', (tester) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -171,7 +202,39 @@ void main() {
       expect(find.text('Public Meetup Point'), findsOneWidget);
     });
 
-    testWidgets('ChatInboxScreen renders conversation threads with status badges and refresh indicator', (tester) async {
+    testWidgets('ChatRoomScreen photo picker shares activity photo', (tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: ChatRoomScreen(companionId: 'c1'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap photo icon
+      expect(find.byKey(const Key('chat_photo_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('chat_photo_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Share Activity / Venue Photo'), findsOneWidget);
+      expect(find.text('Coffee & Cafe Meetup'), findsOneWidget);
+
+      // Select Coffee photo
+      await tester.tap(find.text('Coffee & Cafe Meetup'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Found this nice cafe spot'), findsOneWidget);
+    });
+
+    testWidgets('ChatInboxScreen renders conversation threads, search bar, and filters results', (tester) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -192,8 +255,21 @@ void main() {
 
       expect(find.text('Chat'), findsOneWidget);
       expect(find.byType(RefreshIndicator), findsOneWidget);
+      expect(find.byKey(const Key('chat_search_field')), findsOneWidget);
       expect(find.text('Available'), findsWidgets);
-      expect(find.textContaining('Tap to message'), findsWidgets);
+
+      // Search for specific companion
+      await tester.enterText(find.byKey(const Key('chat_search_field')), 'Maya');
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ListTile, 'Maya'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, 'Liam'), findsNothing);
+
+      // Search for nonexistent query
+      await tester.enterText(find.byKey(const Key('chat_search_field')), 'NonexistentXYZ');
+      await tester.pumpAndSettle();
+
+      expect(find.text('No chats found for "NonexistentXYZ"'), findsOneWidget);
     });
   });
 }

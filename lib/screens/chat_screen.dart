@@ -9,8 +9,23 @@ import '../providers/chat_provider.dart';
 import '../providers/companion_provider.dart';
 import '../widgets/widgets.dart';
 
-class ChatInboxScreen extends ConsumerWidget {
+class ChatInboxScreen extends ConsumerStatefulWidget {
   const ChatInboxScreen({super.key});
+
+  @override
+  ConsumerState<ChatInboxScreen> createState() => _ChatInboxScreenState();
+}
+
+class _ChatInboxScreenState extends ConsumerState<ChatInboxScreen> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   Color _statusColor(String s) => switch (s) {
         'Confirmed' => Colors.green,
         'Pending' => Colors.orange,
@@ -18,8 +33,15 @@ class ChatInboxScreen extends ConsumerWidget {
       };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final threads = ref.watch(threadsProvider);
+  Widget build(BuildContext context) {
+    final allThreads = ref.watch(threadsProvider);
+    final threads = _query.isEmpty
+        ? allThreads
+        : allThreads.where((t) {
+            final q = _query.toLowerCase();
+            return t.companion.name.toLowerCase().contains(q) ||
+                t.lastMessage.toLowerCase().contains(q);
+          }).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Chat')),
@@ -32,9 +54,42 @@ class ChatInboxScreen extends ConsumerWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                key: const Key('chat_search_field'),
+                controller: _searchCtrl,
+                onChanged: (val) => setState(() => _query = val.trim()),
+                decoration: InputDecoration(
+                  hintText: 'Search chats or messages...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _query = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
             if (threads.isEmpty) ...[
-              const SizedBox(height: 120),
-              const Center(child: Text('No conversations yet')),
+              const SizedBox(height: 80),
+              Center(
+                child: Text(
+                  _query.isEmpty ? 'No conversations yet' : 'No chats found for "$_query"',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
             ] else
               for (var i = 0; i < threads.length; i++) ...[
                 if (i > 0) const Divider(height: 1),
@@ -310,6 +365,146 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
     });
   }
 
+  Future<void> _sendImage(String imageUrl, String caption) async {
+    await ref.read(chatMessagesProvider(widget.companionId).notifier).send(
+      caption.isNotEmpty ? caption : 'Shared a photo',
+      type: MessageType.image,
+      payload: {
+        'image_url': imageUrl,
+      },
+    );
+    _scrollToBottom();
+  }
+
+  void _showImagePicker() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Share Activity / Venue Photo',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Share safe, verified meetup spot images or activity ideas:',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const Divider(height: 20),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE0F7FA),
+                  child: Icon(Icons.coffee, color: Colors.teal),
+                ),
+                title: const Text('Coffee & Cafe Meetup'),
+                subtitle: const Text('Cozy table setting photo', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sendImage(
+                    'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600',
+                    'Found this nice cafe spot for our meetup! ☕',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF3E5F5),
+                  child: Icon(Icons.palette_outlined, color: Colors.purple),
+                ),
+                title: const Text('Art Museum / Gallery'),
+                subtitle: const Text('Exhibition hall atmosphere', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sendImage(
+                    'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=600',
+                    'How about visiting this art exhibition? 🎨',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE8F5E9),
+                  child: Icon(Icons.park_outlined, color: Colors.green),
+                ),
+                title: const Text('Park / Nature Walk'),
+                subtitle: const Text('Outdoor walking spot', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _sendImage(
+                    'https://images.unsplash.com/photo-1448375240586-882707db888b?w=600',
+                    'Great weather for a walk here! 🌳',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF3E0),
+                  child: Icon(Icons.add_photo_alternate_outlined, color: Colors.orange),
+                ),
+                title: const Text('Custom Photo URL...'),
+                subtitle: const Text('Paste image web address with caption', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCustomPhotoUrlDialog();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomPhotoUrlDialog() {
+    final urlCtrl = TextEditingController();
+    final capCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Image URL'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Image URL (https://...)',
+                hintText: 'https://example.com/photo.jpg',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: capCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Caption (optional)',
+                hintText: 'Check this spot!',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final url = urlCtrl.text.trim();
+              if (url.isNotEmpty) {
+                Navigator.pop(ctx);
+                _sendImage(url, capCtrl.text.trim());
+              }
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Companion? c = ref.watch(allCompanionsProvider).valueOrNull?.where((e) => e.id == widget.companionId).firstOrNull;
@@ -477,6 +672,12 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                     tooltip: 'Share public meetup spot',
                     onPressed: _showLocationPicker,
                   ),
+                  IconButton(
+                    key: const Key('chat_photo_button'),
+                    icon: const Icon(Icons.image_outlined),
+                    tooltip: 'Share photo or activity',
+                    onPressed: _showImagePicker,
+                  ),
                   Expanded(
                     child: TextField(
                       key: const Key('chat_input_field'),
@@ -566,6 +767,37 @@ class _ChatRoomState extends ConsumerState<ChatRoomScreen> {
                     _playingVoiceNotes.contains(m.id) ? 'Playing...' : m.text,
                     style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
                   ),
+                ],
+              ),
+            ] else if (m.type == MessageType.image) ...[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 200, maxWidth: 260),
+                      child: Image.network(
+                        m.payload?['image_url'] ?? '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 120,
+                          width: 200,
+                          color: Colors.black12,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.broken_image, size: 36, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (m.text.isNotEmpty && m.text != 'Shared a photo') ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      m.text,
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ],
               ),
             ] else if (m.type == MessageType.location) ...[

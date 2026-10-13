@@ -28,6 +28,26 @@ class CompanionCard extends StatelessWidget {
         Positioned(top: 8, left: 8, child: _pill(Icons.location_on, '${c.distanceKm.toStringAsFixed(1)} km')),
         if (c.verified)
           const Positioned(top: 8, right: 8, child: CircleAvatar(radius: 12, backgroundColor: Colors.white, child: Icon(Icons.verified, color: Colors.blue, size: 20))),
+        if (c.isActive)
+          Positioned(
+            bottom: 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.shade800.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle, color: Colors.greenAccent, size: 8),
+                  SizedBox(width: 4),
+                  Text('Available', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
       ]);
 
   Widget _pill(IconData i, String t) => Container(

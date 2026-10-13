@@ -68,6 +68,8 @@ class _BookingModalState extends ConsumerState<BookingModal> {
       activity: activity,
       location: location.text.trim().isNotEmpty ? location.text.trim() : 'Public Venue',
       status: BookingStatus.confirmed,
+      clientName: auth.user?.displayName ?? 'Guest Member',
+      clientAvatar: auth.user?.avatarUrl,
     );
 
     await ref.read(bookingsProvider.notifier).add(
@@ -121,6 +123,26 @@ class _BookingModalState extends ConsumerState<BookingModal> {
     switch (step) {
       case 0:
         return Column(children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.teal.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 16, color: Colors.teal),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Host Active Days: ${widget.companion.availabilityDays.join(", ")} (${widget.companion.availabilityHours})',
+                    style: const TextStyle(fontSize: 11, color: Colors.teal, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
           ListTile(leading: const Icon(Icons.calendar_today), title: Text(DateFormat.yMMMEd().format(date)), trailing: const Icon(Icons.chevron_right),
               onTap: () async {
                 final d = await showDatePicker(context: context, initialDate: date, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 90)));

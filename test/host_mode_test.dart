@@ -214,6 +214,35 @@ void main() {
       expect(find.text('Add Photo by URL:'), findsOneWidget);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
+
+      // Test Incoming Client Bookings card presence
+      expect(find.text('Incoming Client Bookings'), findsOneWidget);
+
+      // Test Operating Hours & Days tile and dialog
+      expect(find.text('Operating Hours & Days'), findsOneWidget);
+      await tester.tap(find.text('Operating Hours & Days'));
+      await tester.pumpAndSettle();
+      expect(find.text('Available Days:'), findsOneWidget);
+      expect(find.text('Operating Hours Window:'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Test Client Reviews tile and dialog
+      expect(find.text('Client Reviews'), findsOneWidget);
+      await tester.tap(find.text('Client Reviews'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Client Reviews'), findsWidgets);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      // Test Host Wallet Payout dialog
+      expect(find.text('Withdraw →'), findsOneWidget);
+      await tester.tap(find.text('Withdraw →'));
+      await tester.pumpAndSettle();
+      expect(find.text('Host Payout & Withdrawal'), findsOneWidget);
+      expect(find.text('UPI ID / Account IBAN'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
     });
   });
 }

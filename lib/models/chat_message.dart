@@ -1,6 +1,6 @@
 import 'companion.dart';
 
-enum MessageType { text, voice, location }
+enum MessageType { text, voice, location, image }
 
 class ChatMessage {
   final String id, text;
@@ -37,6 +37,7 @@ class ChatMessage {
       type: switch (typeStr) {
         'voice' => MessageType.voice,
         'location' => MessageType.location,
+        'image' => MessageType.image,
         _ => MessageType.text,
       },
       time: map['created_at'] != null

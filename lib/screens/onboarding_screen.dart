@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import '../models/booking.dart';
 import '../models/companion.dart';
 import '../providers/auth_provider.dart';
 import '../providers/booking_provider.dart';
@@ -197,6 +199,8 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
                 tags: activities.isNotEmpty ? activities.toList() : const ['Coffee', 'Foodie'],
                 activities: activities.isNotEmpty ? activities.toList() : const ['Coffee', 'Sightseeing'],
                 badges: const ['New Host', 'Identity Verified'],
+                availabilityDays: days.isNotEmpty ? days.toList() : const ['Sat', 'Sun'],
+                availabilityHours: '${from.format(context)} - ${to.format(context)}',
               );
 
               final saved = await registerCompanion(ref, newCompanion, userId: auth.user!.id);
@@ -637,7 +641,16 @@ class _HostDashboard extends ConsumerWidget {
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.teal),
                       ),
                       const SizedBox(height: 4),
-                      Text('Escrow Protected', style: TextStyle(fontSize: 11, color: Colors.teal.shade700)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Escrow Protected', style: TextStyle(fontSize: 11, color: Colors.teal.shade700)),
+                          InkWell(
+                            onTap: () => _showPayoutDialog(context, ref, balance),
+                            child: const Text('Withdraw →', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal)),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -675,6 +688,11 @@ class _HostDashboard extends ConsumerWidget {
             ),
           ],
         ),
+
+        const SizedBox(height: 16),
+
+        // Incoming Client Bookings Card
+        _buildIncomingBookingsCard(context, ref, companion),
 
         const SizedBox(height: 16),
 
@@ -741,6 +759,18 @@ class _HostDashboard extends ConsumerWidget {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.schedule_rounded, color: Colors.blue),
+                title: const Text('Operating Hours & Days'),
+                subtitle: Text(
+                  '${companion.availabilityDays.join(", ")} · ${companion.availabilityHours}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showEditAvailabilityDialog(context, ref, companion),
+              ),
+              const Divider(height: 1),
+              ListTile(
                 leading: const Icon(Icons.photo_library_outlined, color: Colors.pink),
                 title: const Text('Manage Gallery Photos'),
                 subtitle: Text(
@@ -750,6 +780,16 @@ class _HostDashboard extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showManageGalleryDialog(context, ref, companion),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.star_outline_rounded, color: Colors.amber),
+                title: const Text('Client Reviews'),
+                subtitle: Text(
+                  '${companion.rating.toStringAsFixed(1)} ★ (${companion.reviewCount} reviews received)',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showHostReviewsDialog(context, ref, companion),
               ),
               const Divider(height: 1),
               ListTile(
@@ -1369,6 +1409,355 @@ class _HostDashboard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildIncomingBookingsCard(BuildContext context, WidgetRef ref, Companion companion) {
+    final bookings = ref.watch(bookingsProvider);
+    final hostBookings = bookings.where((b) {
+      return b.companion.id == companion.id ||
+          (companion.userId != null && b.companion.userId == companion.userId);
+    }).toList();
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.calendar_month_rounded, color: Colors.teal, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Incoming Client Bookings',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${hostBookings.length} total',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (hostBookings.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.inbox_outlined, size: 36, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text(
+                      'No client bookings yet',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'When guests book your profile from Explore, requests appear here with escrow details.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Column(
+                children: [
+                  for (final b in hostBookings) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  b.clientName != null && b.clientName!.isNotEmpty
+                                      ? '${b.clientName} · ${b.activity}'
+                                      : 'Client Meetup · ${b.activity}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: (b.status == BookingStatus.completed
+                                          ? Colors.blue
+                                          : (b.status == BookingStatus.confirmed
+                                              ? Colors.green
+                                              : Colors.orange))
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  b.status.name.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: b.status == BookingStatus.completed
+                                        ? Colors.blue
+                                        : (b.status == BookingStatus.confirmed ? Colors.green : Colors.orange),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${DateFormat.MMMEd().add_jm().format(b.start)} · ${b.location}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '\$${(b.subtotal * 0.85).toStringAsFixed(2)} net payout (Escrow secured)',
+                            style: const TextStyle(fontSize: 12, color: Colors.teal, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                                icon: const Icon(Icons.chat_bubble_outline, size: 14),
+                                label: const Text('Chat', style: TextStyle(fontSize: 12)),
+                                onPressed: () => context.push('/chat/${companion.id}'),
+                              ),
+                              if (b.isUpcoming) ...[
+                                const SizedBox(width: 8),
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                                  icon: const Icon(Icons.check, size: 14),
+                                  label: const Text('Complete', style: TextStyle(fontSize: 12)),
+                                  onPressed: () async {
+                                    await ref.read(bookingsProvider.notifier).complete(b.id);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Meetup marked complete! Escrow of \$${(b.subtotal * 0.85).toStringAsFixed(2)} released to wallet.'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPayoutDialog(BuildContext context, WidgetRef ref, double balance) {
+    final upiCtrl = TextEditingController(text: 'host@okhdfcbank');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Host Payout & Withdrawal'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Available Balance: \$${balance.toStringAsFixed(2)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+            const SizedBox(height: 8),
+            const Text(
+              'Escrow earnings are deposited via Stripe Express or direct UPI transfer within 24 hours.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: upiCtrl,
+              decoration: const InputDecoration(
+                labelText: 'UPI ID / Account IBAN',
+                prefixIcon: Icon(Icons.account_balance),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: balance > 0
+                ? () {
+                    ref.read(walletProvider.notifier).withdraw();
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Payout request of \$${balance.toStringAsFixed(2)} submitted successfully!')),
+                    );
+                  }
+                : null,
+            child: const Text('Confirm Payout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditAvailabilityDialog(BuildContext context, WidgetRef ref, Companion companion) {
+    final days = Set<String>.from(companion.availabilityDays);
+    final hoursCtrl = TextEditingController(text: companion.availabilityHours);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Operating Hours & Days'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Available Days:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    for (final d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+                      FilterChip(
+                        label: Text(d),
+                        selected: days.contains(d),
+                        onSelected: (val) => setState(() => val ? days.add(d) : days.remove(d)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Operating Hours Window:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: hoursCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Hours',
+                    hintText: 'e.g. 10:00 AM - 08:00 PM',
+                    prefixIcon: Icon(Icons.access_time),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                final updated = companion.copyWith(
+                  availabilityDays: days.toList(),
+                  availabilityHours: hoursCtrl.text.trim().isNotEmpty ? hoursCtrl.text.trim() : companion.availabilityHours,
+                );
+                final ok = await updateCompanionProfile(ref, updated);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(ok ? 'Availability hours saved!' : 'Failed to save availability.')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showHostReviewsDialog(BuildContext context, WidgetRef ref, Companion companion) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.star_rounded, color: Colors.amber),
+            const SizedBox(width: 8),
+            Text('Client Reviews (${companion.reviewCount})'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Consumer(
+            builder: (context, ref, _) {
+              final asyncReviews = ref.watch(reviewsProvider(companion.id));
+              return asyncReviews.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (reviews) {
+                  if (reviews.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(child: Text('No reviews received yet.')),
+                    );
+                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: reviews.length,
+                    separatorBuilder: (_, __) => const Divider(height: 12),
+                    itemBuilder: (_, i) {
+                      final r = reviews[i];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Row(
+                          children: [
+                            Text(r.author, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, color: Colors.amber, size: 14),
+                                const SizedBox(width: 2),
+                                Text(r.rating.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        subtitle: Text(r.text, style: const TextStyle(fontSize: 12)),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
       ),
     );
   }
