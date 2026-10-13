@@ -88,7 +88,14 @@ class ChatInboxScreen extends ConsumerWidget {
       ),
       title: Row(
         children: [
-          Text(t.companion.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              t.companion.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
